@@ -56,6 +56,7 @@ func (s *Server) Handler() http.Handler {
 func (s *Server) routes() {
 	webRoot, _ := fs.Sub(uiFS, "web")
 	s.mux.Handle("GET /app.js", noCache(http.FileServerFS(webRoot)))
+	s.mux.Handle("GET /shorts.js", noCache(http.FileServerFS(webRoot)))
 	s.mux.Handle("GET /styles.css", noCache(http.FileServerFS(webRoot)))
 	s.mux.Handle("GET /", noCache(http.FileServerFS(webRoot)))
 	s.mux.HandleFunc("GET /outputs/", s.handleOutputFile)
@@ -82,7 +83,6 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /api/videos/delete", s.handleDeleteVideo)
 	s.mux.HandleFunc("GET /api/videos/generated", s.handleListGeneratedVideos)
 	s.mux.HandleFunc("POST /api/videos/generated/delete", s.handleDeleteGeneratedVideo)
-	s.mux.HandleFunc("POST /api/videos/import-youtube", s.handleImportYouTube)
 	s.mux.HandleFunc("POST /api/videos/upload", s.handleUploadVideos)
 }
 
@@ -588,12 +588,13 @@ func (s *Server) handleUploadVideos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := r.ParseMultipartForm(1024 << 20); err != nil {
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid multipart payload"})
 		return
 	}
 
 	files := r.MultipartForm.File["videos"]
+	defer r.MultipartForm.RemoveAll()
 	if len(files) == 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "no files in form field 'videos'"})
 		return
@@ -619,9 +620,14 @@ func (s *Server) handleUploadVideos(w http.ResponseWriter, r *http.Request) {
 			src.Close()
 			continue
 		}
-		_, _ = io.Copy(dst, src)
-		_ = dst.Close()
+		_, copyErr := io.Copy(dst, src)
+		closeErr := dst.Close()
 		_ = src.Close()
+		if copyErr != nil || closeErr != nil {
+			_ = os.Remove(dstPath)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save uploaded video"})
+			return
+		}
 		uploaded = append(uploaded, name)
 	}
 

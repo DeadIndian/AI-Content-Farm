@@ -3,39 +3,91 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runtime
     container_name: aicf-api
-    env_file: ".env"
+    env_file:
+      - path: .env
+        required: false
     environment:
+      PORT: "8080"
+      STORAGE_DIR: "/srv/data"
+      DB_PATH: "app.db"
+      INPUT_VIDEOS_DIR: "./videos"
+      OUTPUT_VIDEOS_DIR: "./data/generated"
+      FFMPEG_BIN: "/usr/bin/ffmpeg"
+      FFPROBE_BIN: "/usr/bin/ffprobe"
+      PYTHON_BIN: "/usr/local/bin/python"
+      YTDLP_BIN: "/usr/local/bin/yt-dlp"
+      SHORTS_SCRIPT: "/srv/scripts/shorts.py"
+      HF_HOME: "/srv/data/models"
+      AUTOPILOT_ENABLED: "false"
+      SHORTS_THREADS: "2"
+      SHORTS_PAUSE_TEMP_C: "${SHORTS_PAUSE_TEMP_C:-80}"
+      SHORTS_CLIP_REST_SECONDS: "${SHORTS_CLIP_REST_SECONDS:-2}"
+      WHISPER_MODEL: "${WHISPER_MODEL:-base}"
+      SHORTS_ENCODER: "${SHORTS_ENCODER:-auto}"
       TTS_BASE_URL: "http://tts:5002"
+      TTS_DOCKER_AUTO_MANAGE: "false"
+      TTS_TIMEOUT_SECONDS: "180"
     ports:
-      - "${PORT}:${PORT}"
+      - "${PORT:-8080}:8080"
     volumes:
       - ./data:/srv/data
       - ./videos:/srv/videos
-      - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
+    init: true
+    cpus: "${AICF_CPUS:-2.0}"
+    cpu_shares: 256
+    mem_limit: "${AICF_MEMORY:-5g}"
+    memswap_limit: "${AICF_MEMORY:-5g}"
+    pids_limit: 128
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:${PORT}/healthz"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/healthz"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 20s
 
   tts:
+    profiles: ["tts"]
     build:
       context: ./piper
       dockerfile: Dockerfile
     container_name: aicf-tts
     ports:
-      - "${TTS_PORT}:5002"
+      - "${TTS_PORT:-5002}:5002"
     environment:
       PIPER_VOICE: "${PIPER_VOICE:-}"
       PIPER_LANGUAGE: "${PIPER_LANGUAGE:-}"
       PIPER_QUALITY: "${PIPER_QUALITY:-}"
       PIPER_MODEL_DIR: "/models"
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
     volumes:
       - piper_models:/models
     restart: unless-stopped
+    init: true
+    cpus: "0.75"
+    cpu_shares: 128
+    mem_limit: 768m
+    memswap_limit: 768m
+    pids_limit: 64
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5002/healthz')"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
 
 volumes:
   piper_models:

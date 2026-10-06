@@ -39,9 +39,9 @@ func Load() (Config, error) {
 	cfg := Config{
 		Port:                 envOrDefault("PORT", "8080"),
 		StorageDir:           envOrDefault("STORAGE_DIR", "./data"),
-		DatabasePath:         envOrDefault("DB_PATH", "./data/app.db"),
+		DatabasePath:         envOrDefault("DB_PATH", "app.db"),
 		InputVideosDir:       envOrDefault("INPUT_VIDEOS_DIR", "./videos"),
-		OutputVideosDir:      envOrDefault("OUTPUT_VIDEOS_DIR", "./data"),
+		OutputVideosDir:      envOrDefault("OUTPUT_VIDEOS_DIR", "./data/generated"),
 		GeminiAPIKey:         os.Getenv("GEMINI_API_KEY"),
 		OpenRouterAPIKey:     os.Getenv("OPENROUTER_API_KEY"),
 		OpenRouterModel:      envOrDefault("OPENROUTER_MODEL", "google/gemini-2.0-flash-001"),

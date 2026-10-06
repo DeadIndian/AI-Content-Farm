@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Gollabharath/ai-content-farm/internal/job"
+	"github.com/Gollabharath/ai-content-farm/internal/resource"
 	"github.com/Gollabharath/ai-content-farm/internal/script"
 	"github.com/Gollabharath/ai-content-farm/internal/settings"
 	"github.com/Gollabharath/ai-content-farm/internal/storage"
@@ -121,6 +122,11 @@ func (r *Runner) GenerateScript(ctx context.Context, req job.Request) (script.Ge
 }
 
 func (r *Runner) process(ctx context.Context, workerID int, jobID string) {
+	release, err := resource.Acquire(ctx)
+	if err != nil {
+		return
+	}
+	defer release()
 	j, ok := r.store.Get(jobID)
 	if !ok {
 		return

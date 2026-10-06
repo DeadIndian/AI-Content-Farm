@@ -1223,9 +1223,9 @@ async function importYouTubeVideo() {
 	}
 
 	importYouTubeBtn.disabled = true;
-	setStatus("Importing and splitting YouTube video...");
+	setStatus("Queuing podcast Shorts...");
 	try {
-		const resp = await fetch("/api/videos/import-youtube", {
+		const resp = await fetch("/api/shorts", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ url }),
@@ -1235,12 +1235,8 @@ async function importYouTubeVideo() {
 			throw new Error(data.error || "YouTube import failed");
 		}
 		youtubeURLInput.value = "";
-		await loadVideos();
-		const compressed = Number(data.clips_compressed || 0);
-		setStatus(
-			`Imported ${data.clips_created || 0} full 56s clips (tail discarded).${compressed > 0 ? ` Compressed ${compressed} oversized clip(s).` : ""}`,
-			"success",
-		);
+		document.querySelector('[data-tab="shorts"]').click();
+		setStatus("Podcast queued. Follow progress in Podcast Shorts.", "success");
 	} catch (e) {
 		setStatus(e.message, "error");
 	} finally {
@@ -1500,10 +1496,11 @@ async function boot() {
 	setupUploadArea();
 	try {
 		await loadSettings();
-		await loadVoices();
-		await loadSettings();
 		await Promise.all([loadVideos(), loadJobs()]);
 		setStatus("Ready to create content.", "success");
+		// Podcast editing does not require a TTS server.
+		document.querySelector('[data-tab="studio"]').addEventListener("click", () => loadVoices(), {once: true});
+		document.querySelector('[data-tab="settings"]').addEventListener("click", () => loadVoices(), {once: true});
 	} catch (e) {
 		setStatus(e.message || "Failed to initialize", "error");
 	}

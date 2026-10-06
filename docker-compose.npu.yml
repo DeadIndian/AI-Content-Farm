@@ -1,0 +1,8 @@
+services:
+  api:
+    build:
+      target: npu
+    devices:
+      - /dev/accel/accel0:/dev/accel/accel0
+    environment:
+      SHORTS_TRANSCRIBER: "${SHORTS_TRANSCRIBER:-auto}"

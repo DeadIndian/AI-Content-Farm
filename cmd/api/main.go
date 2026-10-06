@@ -16,6 +16,7 @@ import (
 	"github.com/Gollabharath/ai-content-farm/internal/pipeline"
 	"github.com/Gollabharath/ai-content-farm/internal/script"
 	"github.com/Gollabharath/ai-content-farm/internal/settings"
+	"github.com/Gollabharath/ai-content-farm/internal/shorts"
 	"github.com/Gollabharath/ai-content-farm/internal/storage"
 	"github.com/Gollabharath/ai-content-farm/internal/tts"
 	"github.com/Gollabharath/ai-content-farm/internal/video"
@@ -121,7 +122,7 @@ func main() {
 		script.NewGeminiOpenRouterGenerator(cfg.GeminiAPIKey, cfg.OpenRouterAPIKey, cfg.OpenRouterModel, 60*time.Second),
 		ttsClient,
 		video.NewFFmpegBuilder(cfg.FFmpegBinaryPath),
-		2,
+		1,
 	)
 	runner.Start(ctx)
 	defer runner.Stop()
@@ -141,6 +142,13 @@ func main() {
 		}
 		syncTTSDocker(ctx, after.PiperEnabled)
 	})
+	shortsService, err := shorts.New(ctx, dbPath, cfg.StorageDir)
+	if err != nil {
+		log.Fatalf("podcast service init error: %v", err)
+	}
+	defer shortsService.Close()
+	defer stop()
+	srv.RegisterShorts(shortsService)
 	addr := ":" + cfg.Port
 	log.Printf("api listening on %s", addr)
 

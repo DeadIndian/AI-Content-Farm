@@ -200,6 +200,11 @@ def index() -> str:
     )
 
 
+@app.get("/healthz")
+def health():
+    return jsonify({"status": "ok"})
+
+
 @app.get("/api/voices")
 def voices() -> Response:
     voices_catalog = _load_catalog()

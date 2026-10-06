@@ -5,3 +5,8 @@ data
 *.log
 *.tmp
 bin
+.env
+.venv
+.tools
+__pycache__
+api

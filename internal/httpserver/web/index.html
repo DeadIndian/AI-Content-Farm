@@ -25,7 +25,8 @@
 
 			<!-- Main Navigation Tabs -->
 			<nav class="main-nav">
-				<button class="main-tab-btn active" data-tab="studio">🎬 Studio</button>
+				<button class="main-tab-btn active" data-tab="shorts">✂️ Podcast Shorts</button>
+				<button class="main-tab-btn" data-tab="studio">🎬 Studio</button>
 				<button class="main-tab-btn" data-tab="jobs">⏳ Jobs Queue</button>
 				<button class="main-tab-btn" data-tab="videos">📹 My Videos</button>
 				<button class="main-tab-btn" data-tab="assets">📁 Asset Library</button>
@@ -39,7 +40,25 @@
 					<!-- ==============================
 						 TAB: STUDIO
 					=============================== -->
-					<div id="tab-studio" class="main-tab-content active">
+					<div id="tab-shorts" class="main-tab-content active">
+						<section class="card">
+							<h2>Turn a whole podcast into Shorts</h2>
+							<p>Original video and audio · 1080 × 1920 · highlighted captions · maximum 45 seconds each · unlimited parts, including the ending.</p>
+							<form id="shorts-form">
+								<div class="form-group"><label for="shorts-url">YouTube video link</label><input id="shorts-url" type="text" placeholder="https://www.youtube.com/watch?v=…" /></div>
+								<div class="form-group"><label for="shorts-source">Or choose a video from your library</label><select id="shorts-source"><option value="">Use YouTube link</option></select><button type="button" id="shorts-refresh-library" class="btn btn-secondary btn-sm">Refresh library</button><p>Upload local podcasts in Asset Library first.</p></div>
+								<div class="form-group"><label for="shorts-layout">Vertical layout</label><select id="shorts-layout"><option value="fit">Full picture with blurred background</option><option value="crop">Full-screen center crop (single speaker)</option><option value="split">Stack left / right halves (two-person wide shot)</option></select></div>
+								<div class="form-group"><label for="shorts-language">Spoken language</label><select id="shorts-language"><option value="">Auto-detect</option><option value="en">English</option><option value="hi">Hindi</option><option value="te">Telugu</option><option value="es">Spanish</option><option value="fr">French</option><option value="de">German</option><option value="ja">Japanese</option></select></div>
+								<div class="form-group"><label for="shorts-duration">Maximum seconds per Short</label><input id="shorts-duration" type="number" min="5" max="45" value="45" required /></div>
+								<div class="form-group"><label><input id="shorts-captions" type="checkbox" checked /> Transcribe speech and burn in word-highlighted captions</label></div>
+								<p>Sentence and pause boundaries guide the cuts. Every part of the source is retained. The first captioned job downloads a local speech model; long podcasts take time.</p>
+								<button id="shorts-submit" class="btn btn-primary" type="submit">Generate all Shorts</button>
+							</form>
+							<p id="shorts-status" role="status" aria-live="polite"></p>
+						</section>
+						<div id="shorts-jobs"></div>
+					</div>
+					<div id="tab-studio" class="main-tab-content">
 						<div class="grid-layout">
 							<!-- Left Column: Setup & Script -->
 							<div class="col-main">
@@ -364,7 +383,7 @@
 										<input
 											id="youtube-url"
 											type="text"
-											placeholder="Paste YouTube link to split into 56s clips"
+											placeholder="Paste YouTube link to generate podcast Shorts"
 											style="flex: 1" />
 										<button
 											id="import-youtube"
@@ -522,5 +541,6 @@
 		</div>
 
 		<script src="/app.js?v=20260401b"></script>
+		<script src="/shorts.js?v=20260915"></script>
 	</body>
 </html>

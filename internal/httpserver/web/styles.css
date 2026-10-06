@@ -72,6 +72,8 @@ body {
 
 /* Main Navigation (Tabs) */
 .main-nav {
+	overflow-x: auto;
+	flex-shrink: 0;
 	background: var(--bg-primary);
 	border-bottom: 1px solid var(--border);
 	display: flex;
@@ -82,6 +84,8 @@ body {
 }
 
 .main-tab-btn {
+	white-space: nowrap;
+	flex-shrink: 0;
 	background: none;
 	border: none;
 	padding: 18px 8px;

@@ -68,7 +68,7 @@ func (b *FFmpegBuilder) Render(ctx context.Context, req RenderRequest) (string, 
 	}
 
 	args := make([]string, 0, 32)
-	args = append(args, "-y")
+	args = append(args, "-y", "-nostdin", "-v", "error", "-filter_threads", "1", "-threads", "2")
 	if bgPath == "" {
 		args = append(args,
 			"-f", "lavfi",
@@ -105,6 +105,7 @@ func (b *FFmpegBuilder) Render(ctx context.Context, req RenderRequest) (string, 
 		"-shortest",
 		"-t", fmt.Sprintf("%.3f", maxOutputDurationSeconds),
 		"-c:v", "libx264",
+		"-preset", "veryfast", "-crf", "22", "-threads", "2",
 		"-pix_fmt", "yuv420p",
 		"-c:a", "aac",
 		"-movflags", "+faststart",

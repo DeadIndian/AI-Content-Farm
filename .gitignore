@@ -5,3 +5,6 @@ bin/
 *.out
 .vscode/
 data/
+.venv/
+.tools/
+__pycache__/
