@@ -18,6 +18,7 @@ import (
 	"github.com/Gollabharath/ai-content-farm/internal/settings"
 	"github.com/Gollabharath/ai-content-farm/internal/shorts"
 	"github.com/Gollabharath/ai-content-farm/internal/storage"
+	"github.com/Gollabharath/ai-content-farm/internal/studio"
 	"github.com/Gollabharath/ai-content-farm/internal/tts"
 	"github.com/Gollabharath/ai-content-farm/internal/video"
 )
@@ -62,7 +63,7 @@ func main() {
 		log.Fatalf("storage init error: %v", err)
 	}
 	var composeManager *tts.ComposeManager
-	if cfg.TTSDockerAutoManage {
+	if cfg.TTSDockerAutoManage && strings.EqualFold(os.Getenv("ALLOW_LOCAL_MODELS"), "true") {
 		composeManager = tts.NewComposeManager(
 			tts.ResolveProjectDir(cfg.TTSDockerProjectDir),
 			cfg.TTSDockerServiceName,
@@ -149,6 +150,12 @@ func main() {
 	defer shortsService.Close()
 	defer stop()
 	srv.RegisterShorts(shortsService)
+	studioService, err := studio.New(ctx, dbPath, cfg.StorageDir)
+	if err != nil {
+		log.Fatalf("studio service init error: %v", err)
+	}
+	defer studioService.Close()
+	srv.RegisterStudio(studioService)
 	addr := ":" + cfg.Port
 	log.Printf("api listening on %s", addr)
 

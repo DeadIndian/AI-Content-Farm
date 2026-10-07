@@ -46,7 +46,7 @@ func Load() (Config, error) {
 		OpenRouterAPIKey:     os.Getenv("OPENROUTER_API_KEY"),
 		OpenRouterModel:      envOrDefault("OPENROUTER_MODEL", "google/gemini-2.0-flash-001"),
 		TTSProvider:          envOrDefault("TTS_PROVIDER", "piper"),
-		TTSDockerAutoManage:  envBoolOrDefault("TTS_DOCKER_AUTO_MANAGE", true),
+		TTSDockerAutoManage:  envBoolOrDefault("TTS_DOCKER_AUTO_MANAGE", false),
 		TTSDockerServiceName: envOrDefault("TTS_DOCKER_SERVICE_NAME", "aicf-tts"),
 		TTSDockerProjectDir:  envOrDefault("TTS_DOCKER_PROJECT_DIR", ""),
 		TTSBaseURL:           envOrDefault("TTS_BASE_URL", "http://localhost:5002"),

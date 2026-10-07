@@ -1,5 +1,13 @@
 # Provenance Log
 
+## 2026-10-07 — Presenter Studio
+
+- Independently implemented a LangGraph scene planner, durable Go presenter jobs, embedded Studio UI, and Pillow/FFmpeg renderer. No predecessor source files were imported.
+- Reviewed predecessor documentation and architecture for explicit script approval, typed scenes, audio-first timing, asset alignment, and restart recovery. See `docs/research.md` for sources and distinctions between existing and planned functionality.
+- Nova and Atlas artwork and their expression PNGs were created for this repository; reproducible source lives in `assets/presenters/build_assets.py`.
+- Personal character images and voice references are excluded from Git and Docker build context. The public app includes only preset names and opt-in local asset support.
+- External projects were researched for design comparison; their source code and assets were not copied.
+
 ## 2026-03-26
 
 - Initialized clean-room Go repository structure.

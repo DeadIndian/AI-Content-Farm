@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>AI Content Farm</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+			rel="stylesheet" />
+		<link rel="stylesheet" href="/styles.css?v=20260401b" />
+	</head>
+	<body>
+		<div class="app-container">
+			<!-- Header -->
+			<header class="app-header">
+				<div class="header-content">
+					<div class="logo-section">
+						<h1 class="logo">⚙️ AI Content Farm</h1>
+						<p class="subtitle">Video Production Suite</p>
+					</div>
+				</div>
+			</header>
+
+			<!-- Main Navigation Tabs -->
+			<nav class="main-nav">
+				<button class="main-tab-btn active" data-tab="shorts">✂️ Podcast Shorts</button>
+				<button class="main-tab-btn" data-tab="studio">🎬 Studio</button>
+				<button class="main-tab-btn" data-tab="jobs">⏳ Jobs Queue</button>
+				<button class="main-tab-btn" data-tab="videos">📹 My Videos</button>
+				<button class="main-tab-btn" data-tab="assets">📁 Asset Library</button>
+				<button class="main-tab-btn" data-tab="settings">⚙️ Settings</button>
+			</nav>
+
+			<div class="layout-wrapper">
+				<main class="main-content">
+					<p id="status" class="status-message"></p>
+
+					<!-- ==============================
+						 TAB: STUDIO
+					=============================== -->
+					<div id="tab-shorts" class="main-tab-content active">
+						<section class="card">
+							<h2>Turn a whole podcast into Shorts</h2>
+							<p>Original video and audio · 1080 × 1920 · highlighted captions · maximum 45 seconds each · unlimited parts, including the ending.</p>
+							<form id="shorts-form">
+								<div class="form-group"><label for="shorts-url">YouTube video link</label><input id="shorts-url" type="text" placeholder="https://www.youtube.com/watch?v=…" /></div>
+								<div class="form-group"><label for="shorts-source">Or choose a video from your library</label><select id="shorts-source"><option value="">Use YouTube link</option></select><button type="button" id="shorts-refresh-library" class="btn btn-secondary btn-sm">Refresh library</button><p>Upload local podcasts in Asset Library first.</p></div>
+								<div class="form-group"><label for="shorts-layout">Vertical layout</label><select id="shorts-layout"><option value="fit">Full picture with blurred background</option><option value="crop">Full-screen center crop (single speaker)</option><option value="split">Stack left / right halves (two-person wide shot)</option></select></div>
+								<div class="form-group"><label for="shorts-language">Spoken language</label><select id="shorts-language"><option value="">Auto-detect</option><option value="en">English</option><option value="hi">Hindi</option><option value="te">Telugu</option><option value="es">Spanish</option><option value="fr">French</option><option value="de">German</option><option value="ja">Japanese</option></select></div>
+								<div class="form-group"><label for="shorts-duration">Maximum seconds per Short</label><input id="shorts-duration" type="number" min="5" max="45" value="45" required /></div>
+								<div class="form-group"><label><input id="shorts-captions" type="checkbox" checked /> Transcribe speech and burn in word-highlighted captions</label></div>
+								<p>Sentence and pause boundaries guide the cuts. Every part of the source is retained. The first captioned job downloads a local speech model; long podcasts take time.</p>
+								<button id="shorts-submit" class="btn btn-primary" type="submit">Generate all Shorts</button>
+							</form>
+							<p id="shorts-status" role="status" aria-live="polite"></p>
+						</section>
+						<div id="shorts-jobs"></div>
+					</div>
+					<div id="tab-studio" class="main-tab-content">
+						<div class="grid-layout">
+							<!-- Left Column: Setup & Script -->
+							<div class="col-main">
+								<section class="card preset-card">
+									<div class="section-header">
+										<h2>1. Idea & Settings</h2>
+									</div>
+									<div class="form-group">
+										<label for="preset-select">Load Preset</label>
+										<select id="preset-select">
+											<option value="">-- Create New / One-Time --</option>
+										</select>
+									</div>
+
+									<div id="preset-settings" class="preset-settings">
+										<div class="form-group">
+											<label for="topic">Topic</label>
+											<textarea
+												id="topic"
+												rows="4"
+												placeholder="Enter a topic. AI will generate english, hindi, and telugu scripts."></textarea>
+										</div>
+									</div>
+								</section>
+
+								<section class="card script-card">
+									<div class="section-header">
+										<h2>2. Scripting</h2>
+									</div>
+									<div class="form-group">
+										<label>Script Mode</label>
+										<div class="script-mode-toggle">
+											<button id="script-mode-ai" class="mode-btn active">
+												🤖 Generate with AI
+											</button>
+											<button id="script-mode-manual" class="mode-btn">
+												✍️ Paste Manual Script
+											</button>
+										</div>
+										<p class="mode-help">
+											Have your own script? Use "Paste Manual Script" to skip AI
+											and render directly.
+										</p>
+									</div>
+
+									<div id="ai-script-section">
+										<button id="generate-script" class="btn btn-primary">
+											Generate Script Draft
+										</button>
+										<div
+											id="generated-script-view"
+											style="display: none; margin-top: 16px">
+											<div class="form-group">
+												<label for="generated-title">Video Title</label>
+												<div class="copy-field">
+													<input id="generated-title" type="text" readonly />
+													<button
+														id="copy-title"
+														class="btn btn-secondary btn-sm"
+														title="Copy title">
+														📋 Copy
+													</button>
+												</div>
+											</div>
+
+											<div class="form-group">
+												<label for="script-override">English Script</label>
+												<textarea
+													id="script-override"
+													rows="8"
+													placeholder="Edit the English draft before rendering..."></textarea>
+											</div>
+
+											<div class="form-group">
+												<label for="script-hindi">Hindi Script</label>
+												<textarea
+													id="script-hindi"
+													rows="6"
+													placeholder="Edit the Hindi draft..."></textarea>
+											</div>
+
+											<div class="form-group">
+												<label for="script-telugu">Telugu Script</label>
+												<textarea
+													id="script-telugu"
+													rows="6"
+													placeholder="Edit the Telugu draft..."></textarea>
+											</div>
+
+											<div class="form-group">
+												<label for="generated-tags">Video Tags</label>
+												<div class="copy-field">
+													<input id="generated-tags" type="text" readonly />
+													<button
+														id="copy-tags"
+														class="btn btn-secondary btn-sm"
+														title="Copy tags">
+														📋 Copy
+													</button>
+												</div>
+											</div>
+										</div>
+									</div>
+
+									<div id="manual-script-section" style="display: none">
+										<div class="form-group">
+											<label for="manual-script">Paste Your Script</label>
+											<textarea
+												id="manual-script"
+												rows="8"
+												placeholder="Paste your custom script here..."></textarea>
+											<p class="mode-help">
+												Your pasted script will be used exactly as entered for
+												voiceover and rendering.
+											</p>
+										</div>
+									</div>
+								</section>
+							</div>
+
+							<!-- Right Column: Visuals & Audio & Actions -->
+							<div class="col-sidebar">
+								<section class="card style-card">
+									<div class="section-header">
+										<h2>Style & Audio</h2>
+									</div>
+									<div class="form-group">
+										<label for="orientation">Video Orientation</label>
+										<select id="orientation">
+											<option value="portrait">Portrait (9:16)</option>
+											<option value="landscape">Landscape (16:9)</option>
+											<option value="square">Square (1:1)</option>
+											<option value="original">Original</option>
+											<option value="custom">Custom Size</option>
+										</select>
+									</div>
+
+									<div
+										class="form-grid"
+										id="custom-size-row"
+										style="display: none">
+										<div class="form-group">
+											<label for="custom-width">Width (px)</label>
+											<input
+												id="custom-width"
+												type="number"
+												min="64"
+												placeholder="1080" />
+										</div>
+										<div class="form-group">
+											<label for="custom-height">Height (px)</label>
+											<input
+												id="custom-height"
+												type="number"
+												min="64"
+												placeholder="1920" />
+										</div>
+									</div>
+
+									<div class="form-group">
+										<label for="background-video">Background Video</label>
+										<select id="background-video">
+											<option value="">Auto (Random)</option>
+										</select>
+									</div>
+
+									<div class="form-group">
+										<label for="language">Language</label>
+										<select id="language" class="voice-select">
+											<option value="">Auto</option>
+										</select>
+									</div>
+									<div class="form-group">
+										<label for="voice">Voice</label>
+										<select id="voice" class="voice-select">
+											<option value="">Default</option>
+										</select>
+									</div>
+								</section>
+
+								<section class="card action-card">
+									<div class="section-header">
+										<h2>Ready?</h2>
+									</div>
+									<button
+										id="render-job"
+										class="btn btn-success btn-full render-btn-styled">
+										🎬 Render Video (AI Script)
+									</button>
+									<button
+										id="render-job-manual"
+										class="btn btn-success btn-full render-btn-styled"
+										style="display: none">
+										🎬 Render Video (Manual Script)
+									</button>
+
+									<hr
+										style="
+											margin: 20px 0;
+											border: none;
+											border-top: 1px solid var(--border);
+										" />
+
+									<div class="form-grid preset-actions">
+										<button id="save-preset" class="btn btn-secondary btn-full">
+											💾 Save Preset
+										</button>
+										<button
+											id="delete-preset"
+											class="btn btn-secondary btn-full">
+											🗑 Delete Preset
+										</button>
+									</div>
+								</section>
+							</div>
+						</div>
+					</div>
+
+					<!-- ==============================
+						 TAB: JOBS
+					=============================== -->
+					<div id="tab-jobs" class="main-tab-content">
+						<section class="card jobs-card">
+							<div class="section-header">
+								<h2>Job Queue</h2>
+								<div style="display: flex; gap: 8px">
+									<button
+										id="refresh"
+										class="btn btn-secondary btn-sm"
+										title="Refresh jobs">
+										↻ Refresh
+									</button>
+									<button
+										id="clear-queue"
+										class="btn btn-danger btn-sm"
+										title="Clear all jobs from queue">
+										✕ Clear Queue
+									</button>
+								</div>
+							</div>
+							<div id="jobs" class="jobs-container"></div>
+						</section>
+					</div>
+
+					<!-- ==============================
+						 TAB: MY VIDEOS
+					=============================== -->
+					<div id="tab-videos" class="main-tab-content">
+						<section class="card videos-card">
+							<div class="section-header">
+								<h2>Generated Videos</h2>
+								<button
+									id="refresh-videos"
+									class="btn btn-secondary btn-sm"
+									title="Refresh videos">
+									↻ Refresh
+								</button>
+							</div>
+							<div id="generated-videos" class="videos-list">
+								<p class="empty-state">No generated videos yet</p>
+							</div>
+						</section>
+					</div>
+
+					<!-- ==============================
+						 TAB: ASSETS
+					=============================== -->
+					<div id="tab-assets" class="main-tab-content">
+						<section class="card assets-card">
+							<div class="section-header">
+								<h2>Background Library</h2>
+							</div>
+
+							<div class="grid-layout">
+								<div class="col-main">
+									<h3>Upload Video</h3>
+									<div class="upload-area" id="upload-area">
+										<p>📁 Drop videos here or click to browse</p>
+										<input
+											id="video-upload"
+											type="file"
+											accept="video/*"
+											multiple
+											hidden />
+									</div>
+									<button id="upload-videos" class="btn btn-primary btn-full">
+										Upload Videos
+									</button>
+
+									<h3 style="margin-top: 24px">Folder Tools</h3>
+									<div
+										class="form-group flex-group"
+										style="display: flex; gap: 8px">
+										<input
+											id="new-folder-name"
+											type="text"
+											placeholder="New folder name"
+											style="flex: 1" />
+										<button
+											id="create-folder"
+											class="btn btn-primary"
+											style="margin-top: 0; width: auto">
+											Create Folder
+										</button>
+									</div>
+									<div
+										class="form-group flex-group"
+										style="display: flex; gap: 8px">
+										<select id="folder-select" style="flex: 1"></select>
+										<button
+											id="rename-folder"
+											class="btn btn-secondary"
+											style="margin-top: 0; width: auto">
+											Rename Folder
+										</button>
+									</div>
+
+									<h3 style="margin-top: 24px">Import from YouTube</h3>
+									<div
+										class="form-group flex-group"
+										style="display: flex; gap: 8px">
+										<input
+											id="youtube-url"
+											type="text"
+											placeholder="Paste YouTube link to generate podcast Shorts"
+											style="flex: 1" />
+										<button
+											id="import-youtube"
+											class="btn btn-primary"
+											style="margin-top: 0; width: auto">
+											Import
+										</button>
+									</div>
+								</div>
+
+								<div class="col-sidebar">
+									<h3>Your Backgrounds</h3>
+									<div
+										id="uploaded-videos"
+										class="videos-list"
+										style="margin-top: 16px">
+										<p class="empty-state">No uploaded videos yet</p>
+									</div>
+								</div>
+							</div>
+						</section>
+					</div>
+
+					<!-- ==============================
+						 TAB: SETTINGS
+					=============================== -->
+					<div id="tab-settings" class="main-tab-content">
+						<section class="card settings-card">
+							<div class="section-header">
+								<h2>⚙️ System Settings</h2>
+							</div>
+
+							<div class="grid-layout">
+								<div class="col-main">
+									<h3>Paths & General</h3>
+									<div class="form-group">
+										<label for="input-dir">Input Videos Folder</label>
+										<input
+											id="input-dir"
+											type="text"
+											placeholder="/path/to/inputs" />
+									</div>
+
+									<div class="form-group">
+										<label for="output-dir">Output Videos Folder</label>
+										<input
+											id="output-dir"
+											type="text"
+											placeholder="/path/to/outputs" />
+									</div>
+
+									<div class="form-group">
+										<label for="default-orientation">Default Orientation</label>
+										<select id="default-orientation">
+											<option value="portrait">Portrait (9:16)</option>
+											<option value="landscape">Landscape (16:9)</option>
+											<option value="square">Square (1:1)</option>
+											<option value="original">Original</option>
+										</select>
+									</div>
+
+									<button
+										id="save-settings"
+										class="btn btn-primary btn-full"
+										style="margin-top: 24px">
+										Save General Settings
+									</button>
+								</div>
+
+								<div class="col-sidebar">
+									<h3>Audio & TTS</h3>
+									<div class="form-group">
+										<label for="piper-toggle">Piper (Local)</label>
+										<div class="toggle-row">
+											<label
+												class="toggle-switch"
+												for="piper-toggle"
+												aria-label="Toggle Piper">
+												<input id="piper-toggle" type="checkbox" />
+												<span class="toggle-slider"></span>
+											</label>
+											<span id="piper-toggle-label" class="toggle-label"
+												>Off (API)</span
+											>
+										</div>
+									</div>
+
+									<div class="form-group">
+										<label for="tts-provider">TTS Provider</label>
+										<select id="tts-provider">
+											<option value="elevenlabs">ElevenLabs</option>
+											<option value="piper">Piper (Local)</option>
+											<option value="auto">
+												Auto (ElevenLabs then Piper fallback)
+											</option>
+										</select>
+									</div>
+
+									<div class="form-group">
+										<label for="default-language">Default Language</label>
+										<select id="default-language" class="voice-select">
+											<option value="">Auto</option>
+										</select>
+									</div>
+
+									<div class="form-group">
+										<label for="default-voice">Default Voice</label>
+										<select id="default-voice" class="voice-select">
+											<option value="">None</option>
+										</select>
+									</div>
+
+									<div
+										class="voices-list"
+										id="voices-list"
+										style="max-height: 200px; overflow-y: auto">
+										<p class="empty-state">Loading voices...</p>
+									</div>
+
+									<div class="form-group">
+										<label for="voice-preview-text">Voice Preview Text</label>
+										<textarea
+											id="voice-preview-text"
+											rows="2"
+											placeholder="This is a quick Piper voice preview."></textarea>
+										<div
+											class="form-grid form-grid-compact"
+											style="margin-top: 8px">
+											<button
+												id="preview-voice"
+												class="btn btn-secondary btn-full"
+												style="margin-top: 0">
+												Preview Voice
+											</button>
+											<audio
+												id="voice-preview-player"
+												controls
+												preload="none"
+												style="height: 38px; width: 100%"></audio>
+										</div>
+									</div>
+
+									<button
+										id="save-voice-settings"
+										class="btn btn-primary btn-full"
+										style="margin-top: 24px">
+										Save Voice Settings
+									</button>
+								</div>
+							</div>
+						</section>
+					</div>
+				</main>
+			</div>
+		</div>
+
+		<script src="/app.js?v=20260401b"></script>
+		<script src="/shorts.js?v=20260915"></script>
+	</body>
+</html>

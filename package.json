@@ -1,0 +1,14 @@
+{
+  "name": "ai-content-farm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local video studio with LangGraph planning and PNG presenters",
+  "scripts": {
+    "start": "bash scripts/run-local.sh",
+    "build": "go build -p=1 -o bin/api ./cmd/api",
+    "test:browser": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}
