@@ -8,3 +8,9 @@ data/
 .venv/
 .tools/
 __pycache__/
+node_modules/
+test-results/
+playwright-report/
+videos/
+assets/presenters/personal/
+/api

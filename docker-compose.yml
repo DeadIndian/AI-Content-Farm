@@ -21,9 +21,14 @@ services:
       SHORTS_SCRIPT: "/srv/scripts/shorts.py"
       HF_HOME: "/srv/data/models"
       AUTOPILOT_ENABLED: "false"
-      SHORTS_THREADS: "2"
-      SHORTS_PAUSE_TEMP_C: "${SHORTS_PAUSE_TEMP_C:-80}"
-      SHORTS_CLIP_REST_SECONDS: "${SHORTS_CLIP_REST_SECONDS:-2}"
+      SHORTS_THREADS: "${SHORTS_THREADS:-1}"
+      ALLOW_LOCAL_MODELS: "${ALLOW_LOCAL_MODELS:-false}"
+      SHORTS_TRANSCRIBER: "${SHORTS_TRANSCRIBER:-gemini}"
+      STUDIO_RESOURCE_MODE: "${STUDIO_RESOURCE_MODE:-gentle}"
+      STUDIO_CAST_DIR: "/srv/data/cast"
+      SHORTS_PAUSE_TEMP_C: "${SHORTS_PAUSE_TEMP_C:-75}"
+      SHORTS_RESUME_TEMP_C: "${SHORTS_RESUME_TEMP_C:-70}"
+      SHORTS_CLIP_REST_SECONDS: "${SHORTS_CLIP_REST_SECONDS:-5}"
       WHISPER_MODEL: "${WHISPER_MODEL:-base}"
       SHORTS_ENCODER: "${SHORTS_ENCODER:-auto}"
       TTS_BASE_URL: "http://tts:5002"
@@ -36,10 +41,10 @@ services:
       - ./videos:/srv/videos
     restart: unless-stopped
     init: true
-    cpus: "${AICF_CPUS:-2.0}"
+    cpus: "${AICF_CPUS:-1.0}"
     cpu_shares: 256
-    mem_limit: "${AICF_MEMORY:-5g}"
-    memswap_limit: "${AICF_MEMORY:-5g}"
+    mem_limit: "${AICF_MEMORY:-2g}"
+    memswap_limit: "${AICF_MEMORY:-2g}"
     pids_limit: 128
     stop_grace_period: 30s
     logging:

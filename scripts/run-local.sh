@@ -13,13 +13,19 @@ export YTDLP_BIN="${YTDLP_BIN:-$ROOT/.venv/bin/yt-dlp}"
 export SHORTS_SCRIPT="$ROOT/scripts/shorts.py"
 export HF_HOME="${HF_HOME:-$ROOT/data/models}"
 export TTS_DOCKER_AUTO_MANAGE="${TTS_DOCKER_AUTO_MANAGE:-false}"
+export ALLOW_LOCAL_MODELS="${ALLOW_LOCAL_MODELS:-false}"
+export SHORTS_TRANSCRIBER="${SHORTS_TRANSCRIBER:-gemini}"
+export STUDIO_RESOURCE_MODE="${STUDIO_RESOURCE_MODE:-gentle}"
+export SHORTS_THREADS="${SHORTS_THREADS:-1}"
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+export GOMAXPROCS="${GOMAXPROCS:-1}" GOMEMLIMIT="${GOMEMLIMIT:-256MiB}"
 if [[ ! -x "$PYTHON_BIN" ]]; then
-  echo 'Install dependencies first: python3 -m venv .venv && .venv/bin/pip install -r requirements-shorts.txt' >&2
+  echo 'Install dependencies first: python3 -m venv .venv && .venv/bin/pip install -r requirements-studio.lock -r requirements-shorts.txt' >&2
   exit 1
 fi
 mkdir -p bin data
 if command -v go >/dev/null; then
-  go build -o bin/api ./cmd/api
+  go build -p=1 -o bin/api ./cmd/api
 elif [[ ! -x bin/api ]]; then
   echo 'Go 1.25+ is required to build the server (or use Docker Compose).' >&2
   exit 1

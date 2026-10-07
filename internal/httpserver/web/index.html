@@ -1,546 +1,97 @@
 <!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>AI Content Farm</title>
-		<link rel="preconnect" href="https://fonts.googleapis.com" />
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-		<link
-			href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
-			rel="stylesheet" />
-		<link rel="stylesheet" href="/styles.css?v=20260401b" />
-	</head>
-	<body>
-		<div class="app-container">
-			<!-- Header -->
-			<header class="app-header">
-				<div class="header-content">
-					<div class="logo-section">
-						<h1 class="logo">⚙️ AI Content Farm</h1>
-						<p class="subtitle">Video Production Suite</p>
-					</div>
-				</div>
-			</header>
-
-			<!-- Main Navigation Tabs -->
-			<nav class="main-nav">
-				<button class="main-tab-btn active" data-tab="shorts">✂️ Podcast Shorts</button>
-				<button class="main-tab-btn" data-tab="studio">🎬 Studio</button>
-				<button class="main-tab-btn" data-tab="jobs">⏳ Jobs Queue</button>
-				<button class="main-tab-btn" data-tab="videos">📹 My Videos</button>
-				<button class="main-tab-btn" data-tab="assets">📁 Asset Library</button>
-				<button class="main-tab-btn" data-tab="settings">⚙️ Settings</button>
-			</nav>
-
-			<div class="layout-wrapper">
-				<main class="main-content">
-					<p id="status" class="status-message"></p>
-
-					<!-- ==============================
-						 TAB: STUDIO
-					=============================== -->
-					<div id="tab-shorts" class="main-tab-content active">
-						<section class="card">
-							<h2>Turn a whole podcast into Shorts</h2>
-							<p>Original video and audio · 1080 × 1920 · highlighted captions · maximum 45 seconds each · unlimited parts, including the ending.</p>
-							<form id="shorts-form">
-								<div class="form-group"><label for="shorts-url">YouTube video link</label><input id="shorts-url" type="text" placeholder="https://www.youtube.com/watch?v=…" /></div>
-								<div class="form-group"><label for="shorts-source">Or choose a video from your library</label><select id="shorts-source"><option value="">Use YouTube link</option></select><button type="button" id="shorts-refresh-library" class="btn btn-secondary btn-sm">Refresh library</button><p>Upload local podcasts in Asset Library first.</p></div>
-								<div class="form-group"><label for="shorts-layout">Vertical layout</label><select id="shorts-layout"><option value="fit">Full picture with blurred background</option><option value="crop">Full-screen center crop (single speaker)</option><option value="split">Stack left / right halves (two-person wide shot)</option></select></div>
-								<div class="form-group"><label for="shorts-language">Spoken language</label><select id="shorts-language"><option value="">Auto-detect</option><option value="en">English</option><option value="hi">Hindi</option><option value="te">Telugu</option><option value="es">Spanish</option><option value="fr">French</option><option value="de">German</option><option value="ja">Japanese</option></select></div>
-								<div class="form-group"><label for="shorts-duration">Maximum seconds per Short</label><input id="shorts-duration" type="number" min="5" max="45" value="45" required /></div>
-								<div class="form-group"><label><input id="shorts-captions" type="checkbox" checked /> Transcribe speech and burn in word-highlighted captions</label></div>
-								<p>Sentence and pause boundaries guide the cuts. Every part of the source is retained. The first captioned job downloads a local speech model; long podcasts take time.</p>
-								<button id="shorts-submit" class="btn btn-primary" type="submit">Generate all Shorts</button>
-							</form>
-							<p id="shorts-status" role="status" aria-live="polite"></p>
-						</section>
-						<div id="shorts-jobs"></div>
-					</div>
-					<div id="tab-studio" class="main-tab-content">
-						<div class="grid-layout">
-							<!-- Left Column: Setup & Script -->
-							<div class="col-main">
-								<section class="card preset-card">
-									<div class="section-header">
-										<h2>1. Idea & Settings</h2>
-									</div>
-									<div class="form-group">
-										<label for="preset-select">Load Preset</label>
-										<select id="preset-select">
-											<option value="">-- Create New / One-Time --</option>
-										</select>
-									</div>
-
-									<div id="preset-settings" class="preset-settings">
-										<div class="form-group">
-											<label for="topic">Topic</label>
-											<textarea
-												id="topic"
-												rows="4"
-												placeholder="Enter a topic. AI will generate english, hindi, and telugu scripts."></textarea>
-										</div>
-									</div>
-								</section>
-
-								<section class="card script-card">
-									<div class="section-header">
-										<h2>2. Scripting</h2>
-									</div>
-									<div class="form-group">
-										<label>Script Mode</label>
-										<div class="script-mode-toggle">
-											<button id="script-mode-ai" class="mode-btn active">
-												🤖 Generate with AI
-											</button>
-											<button id="script-mode-manual" class="mode-btn">
-												✍️ Paste Manual Script
-											</button>
-										</div>
-										<p class="mode-help">
-											Have your own script? Use "Paste Manual Script" to skip AI
-											and render directly.
-										</p>
-									</div>
-
-									<div id="ai-script-section">
-										<button id="generate-script" class="btn btn-primary">
-											Generate Script Draft
-										</button>
-										<div
-											id="generated-script-view"
-											style="display: none; margin-top: 16px">
-											<div class="form-group">
-												<label for="generated-title">Video Title</label>
-												<div class="copy-field">
-													<input id="generated-title" type="text" readonly />
-													<button
-														id="copy-title"
-														class="btn btn-secondary btn-sm"
-														title="Copy title">
-														📋 Copy
-													</button>
-												</div>
-											</div>
-
-											<div class="form-group">
-												<label for="script-override">English Script</label>
-												<textarea
-													id="script-override"
-													rows="8"
-													placeholder="Edit the English draft before rendering..."></textarea>
-											</div>
-
-											<div class="form-group">
-												<label for="script-hindi">Hindi Script</label>
-												<textarea
-													id="script-hindi"
-													rows="6"
-													placeholder="Edit the Hindi draft..."></textarea>
-											</div>
-
-											<div class="form-group">
-												<label for="script-telugu">Telugu Script</label>
-												<textarea
-													id="script-telugu"
-													rows="6"
-													placeholder="Edit the Telugu draft..."></textarea>
-											</div>
-
-											<div class="form-group">
-												<label for="generated-tags">Video Tags</label>
-												<div class="copy-field">
-													<input id="generated-tags" type="text" readonly />
-													<button
-														id="copy-tags"
-														class="btn btn-secondary btn-sm"
-														title="Copy tags">
-														📋 Copy
-													</button>
-												</div>
-											</div>
-										</div>
-									</div>
-
-									<div id="manual-script-section" style="display: none">
-										<div class="form-group">
-											<label for="manual-script">Paste Your Script</label>
-											<textarea
-												id="manual-script"
-												rows="8"
-												placeholder="Paste your custom script here..."></textarea>
-											<p class="mode-help">
-												Your pasted script will be used exactly as entered for
-												voiceover and rendering.
-											</p>
-										</div>
-									</div>
-								</section>
-							</div>
-
-							<!-- Right Column: Visuals & Audio & Actions -->
-							<div class="col-sidebar">
-								<section class="card style-card">
-									<div class="section-header">
-										<h2>Style & Audio</h2>
-									</div>
-									<div class="form-group">
-										<label for="orientation">Video Orientation</label>
-										<select id="orientation">
-											<option value="portrait">Portrait (9:16)</option>
-											<option value="landscape">Landscape (16:9)</option>
-											<option value="square">Square (1:1)</option>
-											<option value="original">Original</option>
-											<option value="custom">Custom Size</option>
-										</select>
-									</div>
-
-									<div
-										class="form-grid"
-										id="custom-size-row"
-										style="display: none">
-										<div class="form-group">
-											<label for="custom-width">Width (px)</label>
-											<input
-												id="custom-width"
-												type="number"
-												min="64"
-												placeholder="1080" />
-										</div>
-										<div class="form-group">
-											<label for="custom-height">Height (px)</label>
-											<input
-												id="custom-height"
-												type="number"
-												min="64"
-												placeholder="1920" />
-										</div>
-									</div>
-
-									<div class="form-group">
-										<label for="background-video">Background Video</label>
-										<select id="background-video">
-											<option value="">Auto (Random)</option>
-										</select>
-									</div>
-
-									<div class="form-group">
-										<label for="language">Language</label>
-										<select id="language" class="voice-select">
-											<option value="">Auto</option>
-										</select>
-									</div>
-									<div class="form-group">
-										<label for="voice">Voice</label>
-										<select id="voice" class="voice-select">
-											<option value="">Default</option>
-										</select>
-									</div>
-								</section>
-
-								<section class="card action-card">
-									<div class="section-header">
-										<h2>Ready?</h2>
-									</div>
-									<button
-										id="render-job"
-										class="btn btn-success btn-full render-btn-styled">
-										🎬 Render Video (AI Script)
-									</button>
-									<button
-										id="render-job-manual"
-										class="btn btn-success btn-full render-btn-styled"
-										style="display: none">
-										🎬 Render Video (Manual Script)
-									</button>
-
-									<hr
-										style="
-											margin: 20px 0;
-											border: none;
-											border-top: 1px solid var(--border);
-										" />
-
-									<div class="form-grid preset-actions">
-										<button id="save-preset" class="btn btn-secondary btn-full">
-											💾 Save Preset
-										</button>
-										<button
-											id="delete-preset"
-											class="btn btn-secondary btn-full">
-											🗑 Delete Preset
-										</button>
-									</div>
-								</section>
-							</div>
-						</div>
-					</div>
-
-					<!-- ==============================
-						 TAB: JOBS
-					=============================== -->
-					<div id="tab-jobs" class="main-tab-content">
-						<section class="card jobs-card">
-							<div class="section-header">
-								<h2>Job Queue</h2>
-								<div style="display: flex; gap: 8px">
-									<button
-										id="refresh"
-										class="btn btn-secondary btn-sm"
-										title="Refresh jobs">
-										↻ Refresh
-									</button>
-									<button
-										id="clear-queue"
-										class="btn btn-danger btn-sm"
-										title="Clear all jobs from queue">
-										✕ Clear Queue
-									</button>
-								</div>
-							</div>
-							<div id="jobs" class="jobs-container"></div>
-						</section>
-					</div>
-
-					<!-- ==============================
-						 TAB: MY VIDEOS
-					=============================== -->
-					<div id="tab-videos" class="main-tab-content">
-						<section class="card videos-card">
-							<div class="section-header">
-								<h2>Generated Videos</h2>
-								<button
-									id="refresh-videos"
-									class="btn btn-secondary btn-sm"
-									title="Refresh videos">
-									↻ Refresh
-								</button>
-							</div>
-							<div id="generated-videos" class="videos-list">
-								<p class="empty-state">No generated videos yet</p>
-							</div>
-						</section>
-					</div>
-
-					<!-- ==============================
-						 TAB: ASSETS
-					=============================== -->
-					<div id="tab-assets" class="main-tab-content">
-						<section class="card assets-card">
-							<div class="section-header">
-								<h2>Background Library</h2>
-							</div>
-
-							<div class="grid-layout">
-								<div class="col-main">
-									<h3>Upload Video</h3>
-									<div class="upload-area" id="upload-area">
-										<p>📁 Drop videos here or click to browse</p>
-										<input
-											id="video-upload"
-											type="file"
-											accept="video/*"
-											multiple
-											hidden />
-									</div>
-									<button id="upload-videos" class="btn btn-primary btn-full">
-										Upload Videos
-									</button>
-
-									<h3 style="margin-top: 24px">Folder Tools</h3>
-									<div
-										class="form-group flex-group"
-										style="display: flex; gap: 8px">
-										<input
-											id="new-folder-name"
-											type="text"
-											placeholder="New folder name"
-											style="flex: 1" />
-										<button
-											id="create-folder"
-											class="btn btn-primary"
-											style="margin-top: 0; width: auto">
-											Create Folder
-										</button>
-									</div>
-									<div
-										class="form-group flex-group"
-										style="display: flex; gap: 8px">
-										<select id="folder-select" style="flex: 1"></select>
-										<button
-											id="rename-folder"
-											class="btn btn-secondary"
-											style="margin-top: 0; width: auto">
-											Rename Folder
-										</button>
-									</div>
-
-									<h3 style="margin-top: 24px">Import from YouTube</h3>
-									<div
-										class="form-group flex-group"
-										style="display: flex; gap: 8px">
-										<input
-											id="youtube-url"
-											type="text"
-											placeholder="Paste YouTube link to generate podcast Shorts"
-											style="flex: 1" />
-										<button
-											id="import-youtube"
-											class="btn btn-primary"
-											style="margin-top: 0; width: auto">
-											Import
-										</button>
-									</div>
-								</div>
-
-								<div class="col-sidebar">
-									<h3>Your Backgrounds</h3>
-									<div
-										id="uploaded-videos"
-										class="videos-list"
-										style="margin-top: 16px">
-										<p class="empty-state">No uploaded videos yet</p>
-									</div>
-								</div>
-							</div>
-						</section>
-					</div>
-
-					<!-- ==============================
-						 TAB: SETTINGS
-					=============================== -->
-					<div id="tab-settings" class="main-tab-content">
-						<section class="card settings-card">
-							<div class="section-header">
-								<h2>⚙️ System Settings</h2>
-							</div>
-
-							<div class="grid-layout">
-								<div class="col-main">
-									<h3>Paths & General</h3>
-									<div class="form-group">
-										<label for="input-dir">Input Videos Folder</label>
-										<input
-											id="input-dir"
-											type="text"
-											placeholder="/path/to/inputs" />
-									</div>
-
-									<div class="form-group">
-										<label for="output-dir">Output Videos Folder</label>
-										<input
-											id="output-dir"
-											type="text"
-											placeholder="/path/to/outputs" />
-									</div>
-
-									<div class="form-group">
-										<label for="default-orientation">Default Orientation</label>
-										<select id="default-orientation">
-											<option value="portrait">Portrait (9:16)</option>
-											<option value="landscape">Landscape (16:9)</option>
-											<option value="square">Square (1:1)</option>
-											<option value="original">Original</option>
-										</select>
-									</div>
-
-									<button
-										id="save-settings"
-										class="btn btn-primary btn-full"
-										style="margin-top: 24px">
-										Save General Settings
-									</button>
-								</div>
-
-								<div class="col-sidebar">
-									<h3>Audio & TTS</h3>
-									<div class="form-group">
-										<label for="piper-toggle">Piper (Local)</label>
-										<div class="toggle-row">
-											<label
-												class="toggle-switch"
-												for="piper-toggle"
-												aria-label="Toggle Piper">
-												<input id="piper-toggle" type="checkbox" />
-												<span class="toggle-slider"></span>
-											</label>
-											<span id="piper-toggle-label" class="toggle-label"
-												>Off (API)</span
-											>
-										</div>
-									</div>
-
-									<div class="form-group">
-										<label for="tts-provider">TTS Provider</label>
-										<select id="tts-provider">
-											<option value="elevenlabs">ElevenLabs</option>
-											<option value="piper">Piper (Local)</option>
-											<option value="auto">
-												Auto (ElevenLabs then Piper fallback)
-											</option>
-										</select>
-									</div>
-
-									<div class="form-group">
-										<label for="default-language">Default Language</label>
-										<select id="default-language" class="voice-select">
-											<option value="">Auto</option>
-										</select>
-									</div>
-
-									<div class="form-group">
-										<label for="default-voice">Default Voice</label>
-										<select id="default-voice" class="voice-select">
-											<option value="">None</option>
-										</select>
-									</div>
-
-									<div
-										class="voices-list"
-										id="voices-list"
-										style="max-height: 200px; overflow-y: auto">
-										<p class="empty-state">Loading voices...</p>
-									</div>
-
-									<div class="form-group">
-										<label for="voice-preview-text">Voice Preview Text</label>
-										<textarea
-											id="voice-preview-text"
-											rows="2"
-											placeholder="This is a quick Piper voice preview."></textarea>
-										<div
-											class="form-grid form-grid-compact"
-											style="margin-top: 8px">
-											<button
-												id="preview-voice"
-												class="btn btn-secondary btn-full"
-												style="margin-top: 0">
-												Preview Voice
-											</button>
-											<audio
-												id="voice-preview-player"
-												controls
-												preload="none"
-												style="height: 38px; width: 100%"></audio>
-										</div>
-									</div>
-
-									<button
-										id="save-voice-settings"
-										class="btn btn-primary btn-full"
-										style="margin-top: 24px">
-										Save Voice Settings
-									</button>
-								</div>
-							</div>
-						</section>
-					</div>
-				</main>
-			</div>
-		</div>
-
-		<script src="/app.js?v=20260401b"></script>
-		<script src="/shorts.js?v=20260915"></script>
-	</body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141614">
+  <meta name="description" content="A local creative studio for presenter videos and long-form to Shorts. Write, review, render, and export in one workspace.">
+  <title>AI Content Farm — Studio</title>
+  <link rel="stylesheet" href="/studio.css?v=1">
+  <script src="/studio.js?v=1" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to workspace</a>
+  <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-create" viewBox="0 0 24 24"><path d="M14 4l6 6M4 20l5-1L20 8a2.1 2.1 0 0 0-4-4L5 15l-1 5Z"/></symbol>
+    <symbol id="i-shorts" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="m8 8 12 12M8 16 20 4M14 10l-3 3"/></symbol>
+    <symbol id="i-projects" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10H3V7Z"/><path d="m10 11 5 3-5 3v-6Z"/></symbol>
+    <symbol id="i-cast" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-up-right" viewBox="0 0 24 24"><path d="M6 18 18 6H7m11 0v11"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7V5Z"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3Z"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V3M7 8l5-5 5 5M4 15v5h16v-5"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v13M7 11l5 5 5-5M4 16v4h16v-4"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 10a8 8 0 1 0-1 7M20 4v6h-6"/></symbol>
+    <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M17 3v18M3 8h4M3 16h4M17 8h4M17 16h4"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  </defs></svg>
+  <div class="shell">
+    <aside class="sidebar">
+      <a class="brand" href="#create" aria-label="AI Content Farm Studio home"><span class="brand-mark"><i></i><i></i><i></i><i></i></span><span>AI CONTENT FARM<span class="brand-sub">studio</span></span></a>
+      <div class="nav-label">WORKSPACE</div>
+      <nav class="main-nav" aria-label="Main navigation">
+        <button class="nav-item active" data-view="create" aria-current="page"><svg><use href="#i-create"/></svg><span>Create a video</span><span class="nav-indicator"></span></button>
+        <button class="nav-item" data-view="shorts"><svg><use href="#i-shorts"/></svg><span>Make Shorts</span></button>
+        <button class="nav-item" data-view="projects"><svg><use href="#i-projects"/></svg><span>Projects</span><span id="project-count" class="nav-count" hidden></span></button>
+        <button class="nav-item" data-view="cast"><svg><use href="#i-cast"/></svg><span>Your cast</span></button>
+      </nav>
+      <div class="sidebar-note"><div class="mini-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><p>A small studio.<br>A world of ideas.</p><span>MAKE SOMETHING WORTH WATCHING</span></div>
+      <div class="sidebar-bottom"><button class="nav-item" data-view="settings"><svg><use href="#i-settings"/></svg><span>Settings</span></button><div class="workspace-user"><span class="user-icon">CF</span><div>Local workspace<small>Your files. Your creative control.</small></div></div></div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar"><div class="breadcrumb">Workspace <span>/</span> <strong id="page-breadcrumb">Create a video</strong></div><div class="topbar-right"><button class="connection" id="connection" data-view="settings"><span class="status-dot checking"></span><span id="connection-label">Connecting</span></button><a href="/legacy.html" class="advanced-link">Advanced tools <svg><use href="#i-up-right"/></svg></a></div></header>
+      <main id="main" tabindex="-1">
+        <section class="view" id="view-create" aria-labelledby="create-heading">
+          <div class="page-intro"><div><p class="eyebrow"><span></span> FROM IDEA TO PLAY BUTTON</p><h1 id="create-heading">Good ideas deserve<br>a <em>great video.</em></h1><p class="page-description">Meet your on-screen crew. Give them a topic. Make it yours.</p></div><span class="edition-tag">THE CREATOR'S WORKSPACE<br><b>01 — PRESENTER STUDIO</b></span></div>
+          <div class="create-grid">
+            <div class="composer panel">
+              <div class="panel-heading"><h2><span class="step-number">01</span> Set the direction</h2><span class="label-small">YOU'RE THE DIRECTOR</span></div>
+              <form id="draft-form">
+                <fieldset class="mode-field"><legend class="sr-only">Script mode</legend><div class="segmented mode-control"><label><input type="radio" name="provider" value="demo" checked><span>Try the demo <small>CURATED</small></span></label><label><input type="radio" name="provider" value="ai"><span><svg><use href="#i-spark"/></svg> AI script</span></label><label><input type="radio" name="provider" value="manual"><span>My script</span></label></div></fieldset>
+                <label class="field-label" for="topic">What's the story?</label><div class="topic-wrap"><textarea id="topic" rows="3" maxlength="240" required placeholder="A big question, a curious idea, a rabbit hole…">Why is the sky blue?</textarea><span class="topic-corner"><svg><use href="#i-create"/></svg></span></div>
+                <div class="topic-presets" id="topic-presets"><span>TRY A TOPIC</span><button type="button" data-topic="Why is the sky blue?">Blue skies</button><button type="button" data-topic="How binary search works">Binary search</button><button type="button" data-topic="What happens inside a black hole?">Black holes <svg><use href="#i-up-right"/></svg></button></div>
+                <p class="mode-explanation" id="mode-explanation">Curated scripts. Use the demo voice for a no-key export.</p>
+                <button id="toggle-source-notes" type="button" class="text-link source-notes-toggle" aria-expanded="false" aria-controls="source-notes-field" hidden><svg><use href="#i-plus"/></svg><span>Add source notes &amp; direction</span><small>OPTIONAL</small></button><div id="source-notes-field" class="field" hidden><label for="source-notes" id="source-notes-label">Your script</label><textarea id="source-notes" rows="5" maxlength="18000" placeholder="Paste your dialogue. Separate each speaker's turn with a new paragraph."></textarea><p class="field-help" id="source-notes-help">Your words become alternating scenes. Review every line before rendering.</p></div>
+                <div class="form-rule"></div>
+                <div class="field"><div class="field-label"><label for="pair">Your presenters</label><button class="text-link" type="button" data-view="cast">Meet the cast <svg><use href="#i-arrow"/></svg></button></div><div class="cast-select-wrap"><span class="tiny-avatars" aria-hidden="true"><i>C</i><i>A</i></span><select id="pair"><option value="cog-axiom">Cog &amp; Axiom · Original cast</option><option value="nova-atlas">Nova &amp; Atlas · Original cast</option></select></div></div>
+                <div class="form-two"><fieldset class="field format-field"><legend>Canvas</legend><div class="segmented format-control"><label><input type="radio" name="format" value="portrait" checked><span><i class="format-icon portrait-icon"></i> 9:16</span></label><label><input type="radio" name="format" value="landscape"><span><i class="format-icon landscape-icon"></i> 16:9</span></label><label><input type="radio" name="format" value="square"><span><i class="format-icon square-icon"></i> 1:1</span></label></div></fieldset><div class="field"><label for="target-seconds">Target length</label><select id="target-seconds"><option value="30">~30 seconds</option><option value="45" selected>~45 seconds</option><option value="60">~60 seconds</option><option value="90">~90 seconds</option><option value="120">~2 minutes</option></select></div></div>
+                <button class="button primary generate-button" id="generate-draft" type="submit"><svg><use href="#i-spark"/></svg><span>Generate a draft</span><svg class="button-arrow"><use href="#i-arrow"/></svg></button><p class="button-footnote">Your final say before rendering. Demo scripts have a fixed length.</p>
+                <p class="inline-status" id="draft-status" role="status" aria-live="polite" hidden></p>
+              </form>
+            </div>
+            <aside class="preview-column" aria-label="Video composition preview">
+              <div class="preview-heading"><span><i class="live-outline"></i> THE BIG PICTURE</span><span id="preview-format">9:16 · PORTRAIT</span></div>
+              <div class="preview-surround"><div class="composition" id="composition"><div class="composition-grid"></div><div class="composition-top"><span>THE CURIOSITY<br>CLUB.</span><span class="composition-star">✳</span></div><div class="orbit-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit orbit-three"></div><div class="orbit-sun"></div><span class="orbit-point"></span></div><div class="composition-title"><p>LET'S TALK ABOUT</p><h2 id="preview-title">Why is the<br>sky blue<span>?</span></h2></div><div class="presenter-scene" id="preview-presenters" aria-hidden="true"></div><div id="preview-personal" class="personal-preview" hidden aria-hidden="true"><span>R</span><span>S</span><small>YOUR LOCAL CAST</small></div><div class="preview-caption"><span id="preview-caption-text">A little curiosity goes a long way.</span></div><div class="composition-bottom"><span id="preview-cast">COG + AXIOM</span><span>AI CONTENT FARM</span></div></div></div>
+              <div class="preview-note"><svg><use href="#i-film"/></svg><span>Composition concept. Your finished video appears after rendering.</span></div>
+              <div class="production-strip"><div><span class="production-dot selected">1</span><span>Write a story</span></div><i></i><div><span class="production-dot" id="review-dot">2</span><span>Make it yours</span></div><i></i><div><span class="production-dot" id="render-dot">3</span><span>Roll it</span></div></div>
+            </aside>
+          </div>
+          <section class="review-section" id="review-section" aria-labelledby="review-heading" hidden><div class="section-heading"><div><p class="eyebrow">THE DIRECTOR'S CUT</p><h2 id="review-heading" tabindex="-1">Your story. Scene by scene.</h2><p>Fine-tune the words and visual cards before the cameras roll.</p></div><span class="pill" id="draft-summary"></span></div><div class="review-panel panel"><div class="field"><label for="draft-title">Video title</label><input id="draft-title" maxlength="160" required></div><div id="draft-warnings"></div><div id="scene-list"></div><button type="button" class="button secondary small" id="add-scene"><svg><use href="#i-plus"/></svg>Add a scene</button><div class="review-metadata"><details id="sources-details" hidden><summary>Reference links</summary><ul id="draft-sources"></ul></details><details><summary>Planning steps <span id="trace-count"></span></summary><ol class="trace-list" id="draft-trace"></ol></details></div><div class="render-actions"><div class="render-options"><div class="field"><label for="voice-provider">Presenter voices</label><select id="voice-provider"><option value="gemini">Gemini cloud voice</option><option value="espeak" selected>Lightweight demo voice</option></select></div><div class="field"><label for="render-quality">Export quality</label><select id="render-quality"><option value="preview">Preview · 360p / 12 fps</option><option value="full">Full quality · takes longer</option></select></div><button type="button" class="button primary" id="render-draft"><svg><use href="#i-play"/></svg>Render video</button></div></div><p class="resource-note"><svg><use href="#i-clock"/></svg><span>One render at a time. Preview keeps the workload light; full quality takes longer.</span></p><p class="field-help" id="voice-help">The lightweight demo voice needs no API key or neural model.</p><p class="inline-status" id="render-status" role="status" aria-live="polite" hidden></p></div></section>
+          <section class="latest-section" id="latest-section" hidden><div class="section-heading"><div><p class="eyebrow">IN PRODUCTION</p><h2>Your latest render</h2></div><button class="text-link" data-view="projects">All projects <svg><use href="#i-arrow"/></svg></button></div><div id="latest-jobs"></div></section>
+          <div class="workspace-footer"><span>THOUGHTFULLY DIRECTED. MADE IN YOUR WORKSPACE.</span><span>From a spark to the screen <svg><use href="#i-spark"/></svg></span></div>
+        </section>
+        <section class="view" id="view-shorts" aria-labelledby="shorts-heading" hidden>
+          <div class="page-intro"><div><p class="eyebrow"><span></span> EVERY VIDEO HAS MORE TO GIVE</p><h1 id="shorts-heading">Long story.<br><em>Shorter cuts.</em></h1><p class="page-description">Give your long-form videos a second life, one vertical clip at a time.</p></div><span class="edition-tag">THE CREATOR'S WORKSPACE<br><b>02 — THE CUTTING ROOM</b></span></div>
+          <div class="shorts-grid"><section class="panel shorts-composer"><div class="panel-heading"><h2><span class="step-number">01</span> Bring your footage</h2></div><form id="shorts-form"><fieldset class="mode-field"><legend class="sr-only">Video source</legend><div class="segmented"><label><input type="radio" name="source-mode" value="url" checked><span>YouTube link</span></label><label><input type="radio" name="source-mode" value="upload"><span>Upload video</span></label><label><input type="radio" name="source-mode" value="library"><span>Library</span></label></div></fieldset><div class="field" id="url-source"><label for="shorts-url">YouTube video URL</label><input id="shorts-url" type="url" placeholder="https://www.youtube.com/watch?v=…"><p class="field-help">Use footage you own or have permission to repurpose.</p></div><div id="upload-source" hidden><label class="upload-zone" id="upload-zone" for="video-upload"><svg><use href="#i-upload"/></svg><strong>Drop your footage here</strong><span>or choose a video from your computer</span><input id="video-upload" type="file" accept="video/*,.mkv,.mov,.mp4,.webm,.avi"></label><p class="inline-status" id="upload-status" role="status" aria-live="polite" hidden></p></div><div class="field" id="library-source" hidden><div class="field-label"><label for="shorts-source">Source library</label><button type="button" id="refresh-library" class="text-link">Refresh <svg><use href="#i-refresh"/></svg></button></div><select id="shorts-source"><option value="">Choose an uploaded video</option></select></div><div class="form-rule"></div><fieldset class="field"><legend>Frame the story</legend><div class="layout-options"><label><input type="radio" name="shorts-layout" value="fit" checked><span><i class="layout-diagram fit-diagram"></i><b>Full picture</b><small>Blurred backdrop</small></span></label><label><input type="radio" name="shorts-layout" value="crop"><span><i class="layout-diagram crop-diagram"></i><b>Center crop</b><small>One speaker</small></span></label><label><input type="radio" name="shorts-layout" value="split"><span><i class="layout-diagram split-diagram"></i><b>Split screen</b><small>Two speakers</small></span></label></div></fieldset><div class="form-two"><div class="field"><label for="shorts-duration">Max clip length</label><select id="shorts-duration"><option value="15">15 seconds</option><option value="30">30 seconds</option><option value="45" selected>45 seconds</option></select></div><div class="field"><label for="shorts-language">Spoken language</label><select id="shorts-language"><option value="">Auto-detect</option><option value="en">English</option><option value="hi">Hindi</option><option value="te">Telugu</option><option value="es">Spanish</option><option value="fr">French</option><option value="de">German</option><option value="ja">Japanese</option></select></div></div><label class="toggle-row"><div><strong>Word-highlighted captions</strong><small>Transcribe with Gemini and burn captions into each clip.</small></div><input id="shorts-captions" type="checkbox" checked><span class="toggle-switch"></span></label><p class="field-help" id="shorts-cloud-help">Captions use your configured Gemini account. Turn them off for simple cuts without transcription.</p><button id="shorts-submit" class="button primary generate-button" type="submit"><svg><use href="#i-shorts"/></svg><span>Make the cuts</span><svg class="button-arrow"><use href="#i-arrow"/></svg></button><p class="inline-status" id="shorts-status" role="status" aria-live="polite" hidden></p></form></section><aside class="shorts-story"><div class="shorts-art" aria-hidden="true"><div class="film-source"><div class="mountains"></div><span><svg><use href="#i-play"/></svg></span><i></i></div><div class="cut-line"><span></span><svg><use href="#i-shorts"/></svg><span></span></div><div class="film-cuts"><div><i></i><span>01</span></div><div><i></i><span>02</span></div><div><i></i><span>03</span></div></div><span class="art-label">ONE STORY. MORE WAYS TO TELL IT.</span></div><h2>Keep the whole story.<br>Change the format.</h2><p>With captions enabled, transcript boundaries guide the cuts. Every part of your source is retained, including the ending.</p><div class="honest-note"><svg><use href="#i-clock"/></svg><p>Gemini transcribes in the cloud; video exports run one at a time on your computer. No local speech model is downloaded. Long videos still take time.</p></div></aside></div>
+          <section class="latest-section"><div class="section-heading"><div><p class="eyebrow">ON THE CUTTING ROOM FLOOR</p><h2>Your Shorts</h2></div><button type="button" class="text-link refresh-jobs">Refresh <svg><use href="#i-refresh"/></svg></button></div><p class="empty-inline" id="shorts-empty">Your first batch of Shorts starts with a video above.</p><div id="shorts-jobs" class="job-list"></div></section>
+        </section>
+        <section class="view" id="view-projects" aria-labelledby="projects-heading" hidden><div class="page-intro"><div><p class="eyebrow"><span></span> THE WORK, ALL IN ONE PLACE</p><h1 id="projects-heading">From the <em>studio.</em></h1><p class="page-description">Your renders, your clips, and everything in between.</p></div><button class="button secondary" data-view="create"><svg><use href="#i-plus"/></svg>Create a video</button></div><div class="projects-toolbar"><div class="filter-tabs" role="group" aria-label="Filter projects"><button class="selected" data-filter="all" aria-pressed="true">All projects</button><button data-filter="active" aria-pressed="false">In progress</button><button data-filter="completed" aria-pressed="false">Completed</button></div><button type="button" class="text-link refresh-jobs"><svg><use href="#i-refresh"/></svg>Refresh</button></div><p class="inline-status" id="projects-status" role="status" aria-live="polite" hidden></p><div class="empty-state" id="projects-empty"><span class="empty-icon"><svg><use href="#i-film"/></svg></span><h2>The first one is always special.</h2><p>Create a presenter video or cut your first batch of Shorts.<br>Your work will have a home right here.</p><button class="button primary" data-view="create">Start creating <svg><use href="#i-arrow"/></svg></button></div><div id="project-jobs" class="job-list"></div></section>
+        <section class="view" id="view-cast" aria-labelledby="cast-heading" hidden><div class="page-intro"><div><p class="eyebrow"><span></span> YOUR ON-SCREEN COMPANY</p><h1 id="cast-heading">A little <em>character.</em><br>A lot to say.</h1><p class="page-description">Two voices. A good conversation. Pick the pair for your next story.</p></div></div><div class="cast-grid" id="cast-grid"></div>
+          <section class="cast-import panel" aria-labelledby="cast-import-heading"><div class="section-heading"><div><p class="eyebrow">BRING YOUR OWN CHARACTERS</p><h2 id="cast-import-heading">Make room for your cast.</h2><p>Give two presenters a name, a role, and a PNG. The studio handles the conversation.</p></div><svg><use href="#i-upload"/></svg></div>
+            <form id="cast-form"><div class="field"><label for="cast-name">Pair name</label><input id="cast-name" name="name" required maxlength="80" placeholder="The midnight lab"></div><div class="cast-upload-grid">
+              <fieldset class="cast-upload-person"><legend><span class="step-number">A</span> First presenter</legend><div class="cast-upload-portrait" id="cast-preview-a"><svg><use href="#i-cast"/></svg><img id="cast-image-a" alt="First presenter preview" hidden></div><div class="form-two"><div class="field"><label for="speaker-a">Name</label><input id="speaker-a" name="speaker_a" required maxlength="60" placeholder="Cog"></div><div class="field"><label for="role-a">Role</label><input id="role-a" name="role_a" maxlength="160" placeholder="The curious one"></div></div><div class="field"><label for="idle-a">Portrait PNG <span class="required-label">REQUIRED</span></label><input id="idle-a" name="idle_a" type="file" accept="image/png,.png" required></div><details class="extra-poses"><summary>Add talking &amp; blinking poses <span>OPTIONAL</span></summary><div class="field"><label for="talk-a">Talking PNG</label><input id="talk-a" name="talk_a" type="file" accept="image/png,.png"></div><div class="field"><label for="blink-a">Blinking PNG</label><input id="blink-a" name="blink_a" type="file" accept="image/png,.png"></div></details></fieldset>
+              <fieldset class="cast-upload-person"><legend><span class="step-number">B</span> Second presenter</legend><div class="cast-upload-portrait" id="cast-preview-b"><svg><use href="#i-cast"/></svg><img id="cast-image-b" alt="Second presenter preview" hidden></div><div class="form-two"><div class="field"><label for="speaker-b">Name</label><input id="speaker-b" name="speaker_b" required maxlength="60" placeholder="Axiom"></div><div class="field"><label for="role-b">Role</label><input id="role-b" name="role_b" maxlength="160" placeholder="The calm explainer"></div></div><div class="field"><label for="idle-b">Portrait PNG <span class="required-label">REQUIRED</span></label><input id="idle-b" name="idle_b" type="file" accept="image/png,.png" required></div><details class="extra-poses"><summary>Add talking &amp; blinking poses <span>OPTIONAL</span></summary><div class="field"><label for="talk-b">Talking PNG</label><input id="talk-b" name="talk_b" type="file" accept="image/png,.png"></div><div class="field"><label for="blink-b">Blinking PNG</label><input id="blink-b" name="blink_b" type="file" accept="image/png,.png"></div></details></fieldset>
+            </div><div class="cast-import-actions"><p>PNG files up to 4 MiB each, 16 MiB per pair. Transparent backgrounds work best. Use artwork you own or have permission to use.</p><button id="import-cast" class="button primary" type="submit"><svg><use href="#i-plus"/></svg><span>Add to my cast</span></button></div><p class="inline-status" id="cast-status" role="status" aria-live="polite" hidden></p></form>
+          </section><div class="info-block"><svg><use href="#i-cast"/></svg><div><h3>Original cast, ready for their close-up.</h3><p>Cog &amp; Axiom and Nova &amp; Atlas are included. Uploaded portraits move with the spoken audio. Add optional talking and blinking PNGs for more expressive presenters.</p></div></div></section>
+        <section class="view" id="view-settings" aria-labelledby="settings-heading" hidden><div class="page-intro"><div><p class="eyebrow"><span></span> BEHIND THE SCENES</p><h1 id="settings-heading">Set up to <em>create.</em></h1><p class="page-description">An honest look at what your workspace is ready to do.</p></div><button class="button secondary" id="refresh-capabilities"><svg><use href="#i-refresh"/></svg>Check again</button></div><p class="inline-status" id="settings-status" role="status" aria-live="polite" hidden></p><div class="settings-grid" id="settings-grid"></div><div class="resource-banner"><span class="status-dot"></span><p id="resource-description">Gentle mode · one render worker · lightweight previews · no local AI models</p></div><section class="panel setup-notes"><h2>The way this studio works</h2><div class="setup-row"><span>01</span><div><h3>Cloud intelligence, a lightweight workspace</h3><p>Gemini can write scripts, voice your presenters, and transcribe footage in the cloud. No local AI model is needed. Your computer handles video assembly, one export at a time.</p></div></div><div class="setup-row"><span>02</span><div><h3>Pick the voice for each video</h3><p>Use Gemini cloud voice for natural narration, or the lightweight demo voice to try the workflow without voice API calls. Manual scripts and curated demos remain available. Credentials stay in the server environment.</p></div></div><div class="setup-row"><span>03</span><div><h3>Keep creative control</h3><p>Review generated claims and source notes, edit each scene, then render. Planning steps are visible in every draft. Nothing publishes to YouTube automatically.</p></div></div><div class="form-rule"></div><div id="capability-limitations"></div><a class="button secondary" href="/legacy.html">Open advanced tools <svg><use href="#i-up-right"/></svg></a><p class="field-help">Original studio, voice configuration, background library, and folder tools.</p></section></section>
+      </main>
+    </div>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
 </html>

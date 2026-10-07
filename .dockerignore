@@ -10,3 +10,8 @@ bin
 .tools
 __pycache__
 api
+node_modules
+test-results
+playwright-report
+assets/presenters/personal
+docs

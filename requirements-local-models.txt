@@ -1,0 +1,3 @@
+# Optional: install only on a machine with enough RAM/CPU and opt in explicitly.
+# The default cloud workflow never imports these packages or downloads weights.
+faster-whisper>=1.2.1,<2

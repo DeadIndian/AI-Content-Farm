@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local podcast transcription, sentence-aware segmentation and vertical rendering.
+"""Cloud-first transcription, sentence-aware segmentation and vertical rendering.
 
 One JSON progress event per stdout line; diagnostics go to stderr.
 """
@@ -17,7 +17,7 @@ import time
 
 
 def threads():
-    return max(1, min(4, int(os.getenv("SHORTS_THREADS", "2"))))
+    return max(1, min(4, int(os.getenv("SHORTS_THREADS", "1"))))
 
 
 def temperature():
@@ -28,16 +28,26 @@ def temperature():
                 readings.append(float(label.with_name("temp").read_text()) / 1000)
         except (OSError, ValueError):
             pass
+    for label in Path("/sys/class/hwmon").glob("hwmon*/name"):
+        try:
+            if label.read_text().strip() in ("coretemp", "k10temp", "zenpower", "cpu_thermal"):
+                for sensor in label.parent.glob("temp*_input"):
+                    readings.append(float(sensor.read_text()) / 1000)
+        except (OSError, ValueError):
+            pass
     return max(readings) if readings else None
 
 
 def cool_down():
-    threshold = float(os.getenv("SHORTS_PAUSE_TEMP_C", "80"))
+    threshold = float(os.getenv("SHORTS_PAUSE_TEMP_C", "75"))
+    resume = float(os.getenv("SHORTS_RESUME_TEMP_C", "70"))
+    if not 40 <= resume < threshold <= 95:
+        raise ValueError("Thermal thresholds must satisfy 40 <= resume < pause <= 95 Celsius")
     current = temperature()
-    if threshold <= 0 or current is None or current < threshold:
+    if current is None or current < threshold:
         return
-    emit(warning=f"CPU temperature {current:.0f}°C; waiting to cool below {threshold-10:.0f}°C")
-    while current is not None and current > threshold - 10:
+    emit(warning=f"CPU temperature {current:.0f}°C; waiting to cool below {resume:.0f}°C")
+    while current is not None and current > resume:
         time.sleep(5)
         current = temperature()
 
@@ -146,11 +156,62 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     path.write_text("".join(lines), encoding="utf-8")
 
 
+def transcribe_cloud(source, work, language):
+    from cloud_transcribe import transcribe_audio
+    model = os.getenv("GEMINI_TRANSCRIPTION_MODEL", "gemini-2.5-flash")
+    signature = {"size": source.stat().st_size, "mtime": source.stat().st_mtime_ns,
+                 "model": model, "language": language, "backend": "gemini", "version": 1}
+    cache = work / "transcript.json"
+    if cache.exists():
+        saved = json.loads(cache.read_text())
+        if saved.get("signature") == signature:
+            return saved
+    if not os.getenv("GEMINI_API_KEY", "").strip():
+        raise RuntimeError("Cloud captions need GEMINI_API_KEY. Configure it or turn captions off; local models are disabled by default.")
+    duration = float(probe(source)["format"]["duration"])
+    emit(stage="transcribing", progress=8, message="Transcribing with Gemini cloud; no local model is loaded")
+    emit(warning="Cloud captions use Gemini's approximate word timing. Review caption alignment before publishing.")
+    words, detected = [], language or ""
+    audio = work / "audio-cloud.wav"
+    for start in range(0, math.ceil(duration), 60):
+        require_space(work)
+        chunk_cache = work / f"transcript-cloud-{start:08d}.json"
+        chunk = json.loads(chunk_cache.read_text()) if chunk_cache.exists() else {}
+        if chunk.get("signature") != signature:
+            cool_down()
+            offset, end = max(0, start - 2), min(duration, start + 62)
+            run([os.getenv("FFMPEG_BIN", "ffmpeg"), "-v", "error", "-nostdin", "-y",
+                 "-threads", "1", "-ss", str(offset), "-i", str(source),
+                 "-t", str(end-offset), "-vn", "-ac", "1", "-ar", "16000", str(audio)])
+            try:
+                transcription = transcribe_audio(audio, end-offset, detected, model)
+            finally:
+                audio.unlink(missing_ok=True)
+            owned = []
+            for word in transcription["words"]:
+                midpoint = offset + (word["start"] + word["end"]) / 2
+                if start <= midpoint < min(duration, start+60):
+                    owned.append({"start": offset+word["start"], "end": min(duration, offset+word["end"]), "word": word["word"]})
+            chunk = {"signature": signature, "language": transcription["language"], "words": owned, "backend": "gemini"}
+            atomic_json(chunk_cache, chunk)
+        words.extend(chunk["words"])
+        detected = chunk["language"] or detected
+        emit(stage="transcribing", progress=8+int(32*min((start+60)/duration, 1)),
+             message=f"Cloud transcript: {min(start+60,duration):.0f} / {duration:.0f} seconds")
+    result = {"signature": signature, "language": detected, "words": words, "backend": "gemini", "timing": "model-estimated"}
+    atomic_json(cache, result)
+    return result
+
+
 def transcribe(source, work, language, model_name):
     cache = work / "transcript.json"
-    backend = os.getenv("SHORTS_TRANSCRIBER", "cpu")
+    backend = os.getenv("SHORTS_TRANSCRIBER", "gemini")
+    if backend == "gemini":
+        return transcribe_cloud(source, work, language)
+    if os.getenv("ALLOW_LOCAL_MODELS", "false").lower() != "true":
+        raise RuntimeError("Local transcription models are disabled. Use SHORTS_TRANSCRIBER=gemini, or explicitly set ALLOW_LOCAL_MODELS=true on a capable machine.")
     if backend not in ("cpu", "auto", "npu"):
-        raise RuntimeError("SHORTS_TRANSCRIBER must be cpu, auto or npu")
+        raise RuntimeError("SHORTS_TRANSCRIBER must be gemini, cpu, auto or npu")
     signature = {"size": source.stat().st_size, "mtime": source.stat().st_mtime_ns,
                  "model": model_name, "language": language, "backend": backend, "version": 3}
     if cache.exists():

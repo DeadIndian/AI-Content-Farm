@@ -1,0 +1,59 @@
+1
+00:00:00,120 --> 00:00:01,915
+Could you find one number in a million
+
+2
+00:00:01,915 --> 00:00:04,378
+entries with about twenty comparisons?
+
+3
+00:00:04,578 --> 00:00:07,696
+Yes, if the entries are sorted. Binary search
+
+4
+00:00:07,696 --> 00:00:09,503
+checks the middle item first.
+
+5
+00:00:09,703 --> 00:00:12,178
+If the target is larger, everything below the
+
+6
+00:00:12,178 --> 00:00:13,128
+middle is out?
+
+7
+00:00:13,328 --> 00:00:15,999
+Right. Keep the half that could contain the
+
+8
+00:00:15,999 --> 00:00:19,780
+target, then check its middle. Every comparison cuts
+
+9
+00:00:19,780 --> 00:00:22,128
+the remaining search space roughly in half.
+
+10
+00:00:22,328 --> 00:00:24,554
+So doubling the list adds only about one
+
+11
+00:00:24,554 --> 00:00:25,712
+more comparison?
+
+12
+00:00:25,912 --> 00:00:29,360
+Exactly. That is logarithmic time, written O of
+
+13
+00:00:29,360 --> 00:00:32,384
+log n. But remember the catch: ordinary binary
+
+14
+00:00:32,384 --> 00:00:35,197
+search needs sorted data with efficient access to
+
+15
+00:00:35,197 --> 00:00:36,003
+its middle.

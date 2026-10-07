@@ -1,175 +1,157 @@
-# AI-Content-Farm
+# AI Content Farm
 
-Go web app with a local **YouTube podcast → Shorts** workflow and the original narrated-video studio.
+**An editable video studio for ideas, PNG presenters, and long-form video repurposing.**
 
-## Recommended: resource-limited Docker
+Turn a topic or your own script into a conversation between two animated presenters. Review every scene, render a narrated video, and export the MP4 and captions. Or bring a long video and turn it into a batch of vertical Shorts.
+
+Built with **Go · LangGraph · Gemini · SQLite · Python · FFmpeg**, with a responsive browser studio, cloud speech and transcription, and a lightweight no-key demo.
+
+![AI Content Farm studio](docs/screenshots/studio-desktop.png)
+
+[Watch a real generated example](docs/demo/binary-search.mp4) · [Read its captions](docs/demo/binary-search.srt) · [Mobile studio](docs/screenshots/studio-mobile.png)
+
+## Try it
+
+With Docker Engine, Compose v2.24+, and Buildx installed:
 
 ```bash
+git clone https://github.com/DeadIndian/AI-Content-Farm.git
+cd AI-Content-Farm
 bash scripts/docker-start.sh
 ```
 
-Open **http://localhost:8080**. This builds and starts the app, automatically enabling Intel GPU access when `/dev/dri/renderD128` exists and NPU transcription when `/dev/accel/accel0` exists. Docker Engine, Compose v2.24+ and Buildx are the host software dependencies; acceleration also needs working host kernel drivers/firmware. `.env` is optional; see `.env.example` for overrides. To include the narrated Studio's local speech service, use `bash scripts/docker-start.sh --studio`.
+Open **http://localhost:8080**. In **Create a video**, choose **Try the demo**, a topic, and the original **Cog & Axiom** cast. Build a draft, edit the dialogue and scene cards, and render a preview. Choose **eSpeak** for a lightweight no-key demo, or configure Gemini for cloud narration. The installed eSpeak demo works offline.
 
-### Resource budget
+For Shorts, open **Make Shorts**, upload a video or paste a YouTube video URL, choose a layout, and select **Make the cuts**. Completed clips and their ZIP download appear in **Projects**. Captioned Shorts use Gemini cloud transcription and require `GEMINI_API_KEY`. Turn captions off for clipping without a model call. Local model loading is disabled by default.
 
-| Component | CPU ceiling | RAM ceiling | Idle behavior |
-| --- | --- | --- | --- |
-| API + downloader + transcription + renderer, combined | 2 CPU equivalents | 5 GiB, no swap | Speech model unloaded after jobs |
-| Optional Piper Studio service | 0.75 CPU | 768 MiB, no swap | One worker, synthesis on demand |
-| Dedicated image builder | 2 CPU equivalents | 3 GiB, no swap | Stopped automatically after build |
+## What works
 
-- Studio and Shorts share one heavy-work slot; only one job runs heavy processing at a time.
-- Whisper uses OpenVINO on Intel NPU when the NPU overlay is enabled, otherwise CPU int8 with two inference threads. Both process 60-second audio chunks with context overlap and durable chunk checkpoints. Memory used for decoded audio does not grow with podcast length. Transcript metadata and outputs still grow with length.
-- 1080×1920, 30 fps, original audio and highlighted captions are preserved. Intel VAAPI handles encoding; systems without it use a two-thread CPU fallback.
-- Before transcription chunks and clips, a readable Linux CPU sensor triggers a pause at **80°C**, resuming below **70°C**. There is a two-second rest between clips. These are boundary checks, not a hard temperature cap; a single chunk/clip can warm the CPU before the next check. If sensors are unavailable, jobs report this and CPU/RAM limits remain active.
-- The launcher waits for an already-hot CPU before building. Limits cannot control heat caused by other applications, the room, or the cooling system. Lower `AICF_CPUS` (e.g. `1.0`) for a slower, lighter workload.
-- Downloads are limited to 5 MiB/s and one fragment at a time, preferring ≤1080p/30 fps. Completed YouTube jobs remove their downloaded originals; uploaded library videos and finished Shorts are retained. Set `SHORTS_KEEP_SOURCE=true` to retain downloads.
-- Processing checks for 5 GiB free disk before chunks/clips. This is a reserve check, not a disk quota; downloads and uploads can still consume disk. Logs rotate at 2×5 MB per service.
-- Autopilot is disabled in Docker. No background content generation occurs until you submit a job.
+| Workflow | What you get |
+| --- | --- |
+| Topic → presenter video | LangGraph plans structured dialogue and scene cards through Gemini or a configured compatible cloud API. Every line stays editable. |
+| No-key demo | Three curated explainers: blue skies, binary search, and black holes. Real speech, animated PNGs, and MP4 output. |
+| Your script → video | Manual mode preserves your wording and divides it into alternating presenter scenes. |
+| Long video → Shorts | YouTube download or local upload, Gemini transcription, sentence/pause cuts, highlighted captions, and batch ZIP exports. |
+| Cast | Original Cog & Axiom, optional Nova & Atlas, imported PNG pairs with configurable roles and expressions, and personal Ryusui/Senku or Ryusui/Sai presets. |
+| Review and recovery | Scene editing, browser draft persistence, visible planning traces, persistent jobs, cancellation, retries, and restart recovery. |
+| Export | Portrait, landscape, or square presenter MP4s; posters and SRT captions. Shorts use 1080×1920 H.264/AAC. |
 
-`base` is the low-resource default model. `WHISPER_MODEL=small` improves recognition at the cost of more time/memory; captions should be reviewed. The pipeline covers the full source in order, with fixed fit/crop/split layouts, rather than scoring viral highlights or tracking speakers.
+Demo mode uses curated scripts. AI mode requires a configured model and does not independently browse or fact-check the web. Presenter visuals are designed scene cards. Gemini provides cloud narration; lightweight eSpeak sounds robotic. Cloud caption timings are estimated and should be reviewed. Shorts cover the source sequentially with fixed layouts; there is no virality prediction or active-speaker tracking. Nothing is automatically published.
 
-```bash
-docker compose ps
-docker stats --no-stream aicf-api
-docker compose logs --tail=50 api
-docker compose --profile tts stop  # releases runtime CPU/RAM; keeps files
-```
+## Native development
 
-Data persists in `data/` and `videos/`; Piper models use a named volume. For subsequent starts without rebuilding on this Intel laptop: `docker compose -f docker-compose.yml -f docker-compose.intel.yml -f docker-compose.npu.yml up -d --no-build`. Use the launcher for bounded builds; plain `docker compose build` does not apply service CPU/RAM limits to BuildKit.
-
-### Intel NPU transcription
-
-`docker-compose.npu.yml` selects the NPU image target, passes only `/dev/accel/accel0`, and sets `SHORTS_TRANSCRIBER=auto`. Intel user-space driver/compiler 1.38.0 and OpenVINO GenAI 2026.3.1 are installed inside that image. The pinned driver archive is checksum-verified; host drivers are not installed or modified. The verified model is `OpenVINO/whisper-base-fp16-ov` at a pinned revision. Downloads and compiled NPU cache persist under `data/models/`.
-
-The NPU performs Whisper inference with real word timestamps. Audio decoding, voice detection, tokenization/alignment and orchestration still use some CPU; FFmpeg encoding uses the GPU. `auto` falls back to CPU with a job warning if NPU initialization/inference fails. `SHORTS_TRANSCRIBER=npu` requires NPU success; `cpu` explicitly selects faster-whisper. Other Whisper model sizes currently use CPU fallback. The 5 GiB limit is for the main container; optional Piper can additionally use up to 768 MiB. Extra RAM is a ceiling, not a reservation.
-
-On this Core Ultra 5 125H, OpenVINO detected **Intel AI Boost** and a device-specific inference test reported **NPU** execution. The same 89-second captioned test completed on the NPU path without fallback in **80.61 seconds**, with **1505.78 MiB** peak sampled working memory and **1.87 CPU equivalents** peak sampled CPU, including thermal waits. The earlier CPU run took 57.46 seconds; these runs had different thermal conditions. NPU offload is working, but lower total energy/heat or faster end-to-end output has not been established by these measurements.
-
-### Verified on this laptop (2026-09-15)
-
-- Real YouTube link → download/merge → transcription → two captioned 1080p MP4s; browser playback and ZIP download passed.
-- An 89.14-second uploaded video used two transcription chunks and produced 44.67/44.48-second clips in **57.46 seconds**. Sampled peak working memory was **443.94 MiB**, sampled peak CPU **2.0 CPU equivalents**. This is one small benchmark, not a guarantee for every source/model.
-- Real thermal pauses, queued cancellation, and restart during a split-layout render passed; completed clips were retained without duplicates.
-- Piper synthesized a 2.58-second speech sample in its bounded container. Both services passed health checks. Native-run job downloads remained accessible after migration.
-- Go race tests/vet, seven Python tests, and full MP4 decode checks passed. Exact visual equivalence to the reference was not reviewed.
-
-## Podcast Shorts
-
-Paste a YouTube video URL in the **Podcast Shorts** tab. The app downloads the video, transcribes its original speech locally, chooses cuts near sentence/pause boundaries, and renders the entire source into as many Shorts as needed.
-
-- Every output is **at most 45 seconds**, including its audio/container duration.
-- **No clip-count cap.** The final shorter part is kept. This is whole-video coverage, not a top-N highlight selector.
-- 1080 × 1920 H.264/AAC MP4s with the original audio and word-highlighted captions.
-- Full picture over a blurred background, center crop, or stacked left/right halves for a two-person wide shot. Layouts are fixed; there is no automatic active-speaker tracking.
-- Local transcription using Intel NPU/OpenVINO or faster-whisper CPU int8; no API key or TTS service needed. `base` is the fast default; `small` uses CPU and improves recognition, especially for multilingual podcasts, at higher processing cost.
-- Intel VAAPI encoding when available, with CPU fallback. One podcast at a time limits RAM use.
-- Persistent queue, progress, cancellation, individual previews/downloads, and a streaming ZIP download containing all clips and a timestamp/transcript manifest.
-- Jobs resume after server restarts using cached downloads/transcripts and completed clips. Closing the browser does not interrupt processing.
-
-### Native development (Docker limits do not apply)
+Requires Linux, **Go 1.25+**, **Python 3.11+**, FFmpeg/ffprobe, eSpeak NG, and DejaVu fonts. YouTube extraction also needs Deno 2.3+ or Node 22+. Process-group cancellation targets Linux; use Docker on other platforms.
 
 ```bash
-cd /home/human/THINGS/LOL/AI-Content-Farm
-bash scripts/run-local.sh
-```
+# Debian / Ubuntu system dependencies
+sudo apt-get install ffmpeg espeak-ng fonts-dejavu-core python3-venv
 
-Open **http://localhost:8080**. Dependencies and a local Go toolchain have been installed in `.venv/` and `.tools/`. The launcher rebuilds the server before starting it. Stop with Ctrl+C.
-
-On a fresh Linux checkout, install Go 1.25+, Python 3.10+ with venv support, FFmpeg/ffprobe with libass, a font such as DejaVu Sans, and **Deno 2.3+ or Node 22+** for YouTube extraction. Then:
-
-```bash
 python3 -m venv .venv
-.venv/bin/pip install -r requirements-shorts.txt
+.venv/bin/pip install -r requirements-studio.lock -r requirements-shorts.txt
 cp .env.example .env
 bash scripts/run-local.sh
 ```
 
-The first captioned job downloads Whisper model weights. Outputs are in `data/generated/`; in-progress downloads and transcript caches are in `data/shorts/`; model weights are in `data/models/`. Long podcasts require time and disk space proportional to their length. In-progress caches are retained for recovery; completed YouTube source downloads are removed by default.
+The launcher builds the Go server, selects the virtual environment, and loads `.env`. `npm run start` is an equivalent convenience command. Node is not required to serve the frontend. The original narrated-video studio and library tools remain at **/legacy.html**.
 
-If YouTube asks for sign-in, set `YOUTUBE_COOKIES_BROWSER=firefox` (or your browser) in `.env` and restart, or upload a downloaded podcast in **Asset Library**, then select it in Podcast Shorts. For Docker, mount a Netscape-format cookie file and set `YOUTUBE_COOKIES_FILE` to its container path. Update the downloader when YouTube changes: `.venv/bin/pip install -U 'yt-dlp[default]'`.
+## Cloud models and voices
 
-### API
+For open-ended topic generation, speech, and captioned Shorts, set these in the ignored `.env` file and restart:
 
-```bash
-curl -X POST http://localhost:8080/api/shorts \
-  -H 'Content-Type: application/json' \
-  -d '{"url":"https://www.youtube.com/watch?v=VIDEO_ID","max_duration":45,"layout":"fit"}'
+```dotenv
+GEMINI_API_KEY=your-key
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_TRANSCRIPTION_MODEL=gemini-2.5-flash
+GEMINI_TTS_MODEL=gemini-2.5-flash-preview-tts
+GEMINI_TTS_VOICE_A=Puck
+GEMINI_TTS_VOICE_B=Kore
+STUDIO_TTS_PROVIDER=gemini
+SHORTS_TRANSCRIBER=gemini
+ALLOW_LOCAL_MODELS=false
 ```
 
-Returns `202` immediately with a job ID. `GET /api/shorts` lists jobs; `GET /api/shorts/{id}` returns progress and clips; `POST /api/shorts/{id}/cancel` cancels; `GET /api/shorts/{id}/download` downloads a ZIP. For local input use `"source":"podcast.mp4"` relative to the video library instead of `url`. Optional fields: `language` (e.g. `en`, `hi`, `te`), `no_captions`, `layout` (`fit`, `crop`, `split`). The legacy `/api/videos/import-youtube` endpoint now queues this same workflow.
+Gemini requests use your account's quota and billing. Keys stay on the server. Provider failures appear in the job; failed cloud work never silently starts a local model. Optional source notes guide the planner, and reference links remain available for review. An explicitly configured cloud chat-completions API can use `LLM_BASE_URL`, `LLM_API_KEY`, and `LLM_MODEL`; OpenRouter settings are also supported.
 
-### Hardware checked on 2026-09-15
+Each render can select **Gemini cloud** or **eSpeak**. When `STUDIO_TTS_PROVIDER` is unset, Gemini is preferred if its key is configured; otherwise eSpeak is selected. eSpeak is a lightweight speech synthesizer and does not load a neural model. Gemini uses estimated caption timing; eSpeak supplies word events where available.
 
-Intel Core Ultra 5 125H (14 cores / 18 threads, up to 4.5 GHz), integrated Intel Arc graphics with working i915/VAAPI H.264 encoding, Intel AI Boost NPU verified with OpenVINO, 16 GB RAM, 16 GB swap, SK hynix BC901 512 GB NVMe (~393 GB free at initial inspection), Debian 13.6 / kernel 6.12.101. The Intel GPU handles encoding; the NPU overlay offloads Whisper inference through OpenVINO, with faster-whisper CPU fallback.
-
-### Checks
+Piper and CPU/NPU Whisper are retained as optional integrations for capable machines. They require an explicit `ALLOW_LOCAL_MODELS=true`. To enable the Piper container after opting in:
 
 ```bash
-go test -race ./...
-go vet ./...
+bash scripts/docker-start.sh --studio
+```
+
+```dotenv
+ALLOW_LOCAL_MODELS=true
+STUDIO_TTS_PROVIDER=piper
+STUDIO_VOICE_A=en_US-lessac-medium
+STUDIO_VOICE_B=en_US-ryan-medium
+```
+
+Docker configures the Piper service address. Native users can set `TTS_BASE_URL=http://localhost:5002`. Piper needs voice model downloads and is excluded from the default cloud workflow.
+
+## Cast and rendering budget
+
+**Cog** is a curious copper tinkerer; **Axiom** is a calm geometric scientist. Their original idle, speaking, and blink PNGs are included. Nova & Atlas remain available as another original pair.
+
+The Cast view accepts two presenters, names, roles, and idle PNGs, with optional speaking and blink expressions. Uploaded pairs are stored in `data/cast/<id>/cast.json`; the same registry supplies names and roles to planning and artwork to rendering. A still-only import keeps its original expression and uses audio-driven motion. The upload API validates and decodes images, with a 4 MB per-image and 16 MB total limit. See [cast setup](assets/presenters/README.md) for the manifest and personal imports. Personal fictional artwork and voice references are excluded from the public repository.
+
+`STUDIO_RESOURCE_MODE=gentle` is the default: portrait previews are **360×640 at 12 fps**, landscape **640×360**, and square **360×360**. Rendering uses one FFmpeg encoder thread and reduced process priority. Full exports remain available at 1080×1920, 1920×1080, or 1080×1080, at 24 fps; use them after reviewing a preview.
+
+Presenter rendering pauses at **75°C** and resumes at **70°C** when a CPU sensor is available. Checks run before work, between scenes, and during longer frame loops. If a sensor is unavailable, the job reports it and keeps the resource limits. Threshold checks reduce load; they are not a hardware temperature guarantee.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    UI[Browser studio] --> API[Go API]
+    API --> PLAN[LangGraph planner]
+    PLAN --> CHECKPOINT[(Planning checkpoints)]
+    PLAN --> REVIEW[Editable scene review]
+    REVIEW --> QUEUE[(SQLite render queue)]
+    QUEUE --> GATE[Shared heavy-work slot]
+    GATE --> PNG[Speech + PNG animation]
+    GATE --> SHORTS[Download + Gemini transcription + cuts]
+    PNG --> FFMPEG[FFmpeg]
+    SHORTS --> FFMPEG
+    FFMPEG --> EXPORT[Video + captions + downloads]
+```
+
+LangGraph owns structured planning with recorded node outcomes; Go owns long-running job lifecycles. Rendering is deterministic code, and model output is treated as data. The heavy-work gate serializes presenter, legacy, and Shorts processing.
+
+Read the [architecture and tradeoffs](docs/architecture.md), [research and project lineage](docs/research.md), and [runtime/resource guide](docs/runtime-guide.md).
+
+## Verification
+
+```bash
+go test -p=1 -race ./...
+go vet -p=1 ./...
 .venv/bin/python -m unittest discover -s scripts -p 'test_*.py'
+
+# Optional media checks; run sequentially only when the machine is cool
+STUDIO_RUN_MEDIA_TESTS=1 .venv/bin/python scripts/test_studio_render.py
+
+# Real planner → render → HTTP-download integration, no API key
+STUDIO_INTEGRATION_ROOT="$PWD" go test ./internal/httpserver -run TestStudioRealPipeline -v
+
+# Browser journeys; start the app first
+npm ci
+npx playwright install chromium
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:8080 npm run test:browser
+
+# Include the real presenter render and two-Shorts ZIP browser journeys
+STUDIO_RUN_MEDIA_TESTS=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:8080 npm run test:browser
 ```
 
-## Included Features
+Tests cover malformed model responses, scene validation, source-note handling, checkpoints, recovery, cancellation, retries, safe output access, audio/video streams, animated frames, captions, responsive navigation, and actual browser workflows. See [verification results](docs/verification.md) for tested conditions and remaining limits.
 
-- Prompt-based script generation via OpenAI-compatible API.
-- Manual script approval/edit before render (`script_override`).
-- Orientation control: `portrait`, `landscape`, `square`, `original`, `custom`.
-- Background video library selection and upload from UI.
-- Runtime settings API (`/api/settings`) persisted in SQLite.
-- Job history persisted in SQLite.
-- Mobile-first web UI served at `/`.
+A [GitHub Actions template](docs/ci/README.md) runs media checks on a remote runner. Activation requires permission to edit Actions workflows; it is not active in this branch.
 
-## Core Endpoints
+## Project story
 
-- `GET /healthz`
-- `POST /v1/scripts/generate`
-- `POST /v1/jobs`
-- `GET /v1/jobs`
-- `GET /v1/jobs/{id}`
-- `GET /api/settings`
-- `PUT /api/settings`
-- `GET /api/videos`
-- `POST /api/videos/upload`
+This consolidates useful ideas from my earlier faceless-video projects, typed-scene experiments, and Hermes PNG-presenter pipeline into AI-Content-Farm. It preserves the existing Go/SQLite Shorts engine and adds a complete create–review–render experience.
 
-## Quick Start
+An accurate resume description:
 
-```bash
-bash scripts/docker-start.sh
-```
+> Built a video studio using Go, LangGraph, Gemini, SQLite, and FFmpeg, with editable AI scene plans, configurable PNG presenters, cloud speech and transcription, durable render jobs, and long-video-to-Shorts exports; validated recovery, cancellation, media output, and browser journeys.
 
-Open: `http://localhost:8080`
-
-The launcher detects Intel GPU access. The optional original Piper studio service starts with `bash scripts/docker-start.sh --studio`; podcast Shorts do not need it.
-
-## Environment
-
-See `.env.example` for all options. Important keys:
-
-- `DB_PATH` SQLite DB path for jobs/settings.
-- `INPUT_VIDEOS_DIR` folder containing source/background videos.
-- `OUTPUT_VIDEOS_DIR` folder where rendered videos are written.
-- `LLM_API_KEY` key for script generation.
-- `TTS_PROVIDER` one of `piper`, `elevenlabs`, `auto`.
-- `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` when using ElevenLabs.
-- `TTS_DOCKER_SERVICE_NAME` docker container name for local Piper (`aicf-tts` by default).
-
-### TTS Provider Modes
-
-- `piper`: Always use local Piper (manual local mode).
-- `elevenlabs`: Use ElevenLabs first; if credits are exhausted, the app auto-switches provider to `piper` and retries.
-- `auto`: Try ElevenLabs first, then fallback to Piper for synthesis/preview when ElevenLabs fails.
-
-When running in ElevenLabs mode, you can stop local TTS container:
-
-```bash
-docker compose stop tts
-```
-
-When running the API inside Docker, automatic TTS start/stop requires Docker socket access in the API container.
-
-## Notes
-
-- If `LLM_API_KEY` is empty, the app uses fallback local script generation.
-- Generated videos are accessible via `/outputs/<filename>`.
+GPL-3.0. Original cast artwork is included under the repository license. Dependencies and optional models retain their respective licenses.
