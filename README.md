@@ -22,7 +22,9 @@ bash scripts/docker-start.sh
 
 Open **http://localhost:8080**. In **Create a video**, choose **Try the demo**, a topic, and the original **Cog & Axiom** cast. Build a draft, edit the dialogue and scene cards, and render a preview. Choose **eSpeak** for a lightweight no-key demo, or configure Gemini for cloud narration. The installed eSpeak demo works offline.
 
-For Shorts, open **Make Shorts**, upload a video or paste a YouTube video URL, choose a layout, and select **Make the cuts**. Completed clips and their ZIP download appear in **Projects**. Captioned Shorts use Gemini cloud transcription and require `GEMINI_API_KEY`. Turn captions off for clipping without a model call. Local model loading is disabled by default.
+For Shorts, open **Make Shorts**, upload a video or paste a YouTube video URL, and choose **30, 40, or 45 seconds** (or a custom length from 5–45 seconds). **Fixed length** splits the full source in order; **Natural cuts** prefers sentence endings. Choose **Reel** for gentle zooms, enhanced color, a vignette, balanced speech volume, and animated highlighted captions. Select **Make the cuts** to export every part, including the shorter ending. Clips and their ZIP download appear in **Projects**. Use **Edit batch** to change all cuts, or **Edit this Short** to change one clip's source start, length, layout, and style; each edit creates a new version while keeping previous exports.
+
+Captioned Shorts use Gemini cloud transcription and require `GEMINI_API_KEY`. Turn captions off for editing without a model call. Downloaded sources are retained by default and transcripts are reused for re-edits. Local model loading is disabled by default. See the [Shorts runtime guide](docs/runtime-guide.md#long-video-to-shorts) for timing, disk usage, and API details.
 
 ## What works
 
@@ -31,7 +33,7 @@ For Shorts, open **Make Shorts**, upload a video or paste a YouTube video URL, c
 | Topic → presenter video | LangGraph plans structured dialogue and scene cards through Gemini or a configured compatible cloud API. Every line stays editable. |
 | No-key demo | Three curated explainers: blue skies, binary search, and black holes. Real speech, animated PNGs, and MP4 output. |
 | Your script → video | Manual mode preserves your wording and divides it into alternating presenter scenes. |
-| Long video → Shorts | YouTube download or local upload, Gemini transcription, sentence/pause cuts, highlighted captions, and batch ZIP exports. |
+| Long video → Shorts | Full-source batches, adjustable lengths, fixed or sentence/pause cuts, cinematic Reel styling, animated highlighted captions, batch and individual re-edits, and ZIP exports. |
 | Cast | Original Cog & Axiom, optional Nova & Atlas, imported PNG pairs with configurable roles and expressions, and personal Ryusui/Senku or Ryusui/Sai presets. |
 | Review and recovery | Scene editing, browser draft persistence, visible planning traces, persistent jobs, cancellation, retries, and restart recovery. |
 | Export | Portrait, landscape, or square presenter MP4s; posters and SRT captions. Shorts use 1080×1920 H.264/AAC. |

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/url"
 	"os"
 	"os/exec"
@@ -24,12 +25,15 @@ import (
 )
 
 type Request struct {
-	URL         string  `json:"url"`
-	Source      string  `json:"source,omitempty"`
-	Layout      string  `json:"layout"`
-	Language    string  `json:"language,omitempty"`
-	MaxDuration float64 `json:"max_duration"`
-	NoCaptions  bool    `json:"no_captions"`
+	URL         string   `json:"url"`
+	Source      string   `json:"source,omitempty"`
+	Layout      string   `json:"layout"`
+	Language    string   `json:"language,omitempty"`
+	MaxDuration float64  `json:"max_duration"`
+	NoCaptions  bool     `json:"no_captions"`
+	CutMode     string   `json:"cut_mode,omitempty"`
+	EditStyle   string   `json:"edit_style,omitempty"`
+	ClipStart   *float64 `json:"clip_start,omitempty"`
 }
 
 type Clip struct {
@@ -55,6 +59,7 @@ type Job struct {
 	Total          int       `json:"total"`
 	Completed      int       `json:"completed"`
 	SourceDuration float64   `json:"source_duration"`
+	SourceJobID    string    `json:"source_job_id,omitempty"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 	InputDir       string    `json:"-"`
@@ -150,7 +155,7 @@ func Validate(req *Request) error {
 	if req.MaxDuration == 0 {
 		req.MaxDuration = 45
 	}
-	if req.MaxDuration < 5 || req.MaxDuration > 45 {
+	if math.IsNaN(req.MaxDuration) || req.MaxDuration < 5 || req.MaxDuration > 45 {
 		return fmt.Errorf("max_duration must be between 5 and 45 seconds")
 	}
 	if req.Layout == "" {
@@ -161,10 +166,50 @@ func Validate(req *Request) error {
 	default:
 		return fmt.Errorf("layout must be fit, crop or split")
 	}
+	if req.CutMode == "" {
+		req.CutMode = "sentence"
+	}
+	if req.CutMode != "sentence" && req.CutMode != "fixed" {
+		return fmt.Errorf("cut_mode must be sentence or fixed")
+	}
+	if req.EditStyle == "" {
+		req.EditStyle = "clean"
+	}
+	if req.EditStyle != "clean" && req.EditStyle != "reel" {
+		return fmt.Errorf("edit_style must be clean or reel")
+	}
+	if req.ClipStart != nil && (math.IsNaN(*req.ClipStart) || math.IsInf(*req.ClipStart, 0) || *req.ClipStart < 0) {
+		return fmt.Errorf("clip_start must be a finite, nonnegative source time")
+	}
 	return nil
 }
 
 func (s *Service) Create(req Request, inputDir, outputDir string) (Job, error) {
+	return s.create(req, inputDir, outputDir, "")
+}
+
+// Regenerate creates an independent export while sharing only source/transcript
+// caches. Clients cannot select arbitrary cache paths or replace the source.
+func (s *Service) Regenerate(id string, req Request) (Job, error) {
+	parent, err := s.Get(id)
+	if err != nil {
+		return Job{}, err
+	}
+	if parent.Status != "completed" && parent.Status != "failed" && parent.Status != "cancelled" {
+		return Job{}, fmt.Errorf("wait for the original job to finish or cancel it before editing")
+	}
+	req.URL, req.Source = parent.Request.URL, parent.Request.Source
+	if req.ClipStart != nil && parent.SourceDuration > 0 && *req.ClipStart >= parent.SourceDuration {
+		return Job{}, fmt.Errorf("clip_start must be before the end of the source")
+	}
+	cacheID := parent.SourceJobID
+	if cacheID == "" {
+		cacheID = parent.ID
+	}
+	return s.create(req, parent.InputDir, parent.OutputDir, cacheID)
+}
+
+func (s *Service) create(req Request, inputDir, outputDir, cacheID string) (Job, error) {
 	if err := Validate(&req); err != nil {
 		return Job{}, err
 	}
@@ -186,7 +231,7 @@ func (s *Service) Create(req Request, inputDir, outputDir string) (Job, error) {
 		return Job{}, err
 	}
 	j := Job{ID: "shorts-" + hex.EncodeToString(id[:]), Request: req, Status: "queued", Stage: "queued",
-		Message: "Waiting for podcast worker", Clips: []Clip{}, CreatedAt: time.Now().UTC(), InputDir: inputDir, OutputDir: outputDir}
+		Message: "Waiting for podcast worker", Clips: []Clip{}, CreatedAt: time.Now().UTC(), InputDir: inputDir, OutputDir: outputDir, SourceJobID: cacheID}
 	j.UpdatedAt = j.CreatedAt
 	if err := s.save(j); err != nil {
 		return Job{}, err
@@ -383,8 +428,19 @@ func (b *tailBuffer) Write(p []byte) (int, error) {
 }
 
 func (s *Service) execute(ctx context.Context, j *Job) error {
+	// Apply additive defaults when resuming jobs saved by older versions.
+	if err := Validate(&j.Request); err != nil {
+		return err
+	}
 	work := filepath.Join(s.root, j.ID)
 	if err := os.MkdirAll(work, 0o755); err != nil {
+		return err
+	}
+	cache := work
+	if j.SourceJobID != "" {
+		cache = filepath.Join(s.root, j.SourceJobID)
+	}
+	if err := os.MkdirAll(cache, 0o755); err != nil {
 		return err
 	}
 	source := ""
@@ -399,7 +455,7 @@ func (s *Service) execute(ctx context.Context, j *Job) error {
 		if err := s.update(*j); err != nil {
 			return err
 		}
-		marker := filepath.Join(work, "download.json")
+		marker := filepath.Join(cache, "download.json")
 		if raw, err := os.ReadFile(marker); err == nil {
 			_ = json.Unmarshal(raw, &source)
 		}
@@ -416,7 +472,7 @@ func (s *Service) execute(ctx context.Context, j *Job) error {
 				"--js-runtimes", "deno", "--js-runtimes", "node", "--remote-components", "ejs:github", "--ffmpeg-location", ffmpeg,
 				"--concurrent-fragments", "1", "--limit-rate", env("YOUTUBE_DOWNLOAD_RATE", "5M"),
 				"-f", "bv*[height<=1080][fps<=30]+ba/b[height<=1080][fps<=30]/bv*[height<=1080]+ba/b[height<=1080]", "--merge-output-format", "mp4",
-				"--print", "after_move:filepath", "-o", filepath.Join(work, "source.%(ext)s")}
+				"--print", "after_move:filepath", "-o", filepath.Join(cache, "source.%(ext)s")}
 			if cookies := os.Getenv("YOUTUBE_COOKIES_FILE"); cookies != "" {
 				args = append(args, "--cookies", cookies)
 			}
@@ -447,7 +503,11 @@ func (s *Service) execute(ctx context.Context, j *Job) error {
 		return err
 	}
 	args := []string{script, "--source", source, "--work", work, "--output", j.OutputDir,
-		"--prefix", j.ID, "--layout", j.Request.Layout, "--max-duration", fmt.Sprint(j.Request.MaxDuration), "--language", j.Request.Language}
+		"--prefix", j.ID, "--layout", j.Request.Layout, "--max-duration", fmt.Sprint(j.Request.MaxDuration), "--language", j.Request.Language,
+		"--cache", cache, "--cut-mode", j.Request.CutMode, "--edit-style", j.Request.EditStyle}
+	if j.Request.ClipStart != nil {
+		args = append(args, "--clip-start", fmt.Sprint(*j.Request.ClipStart))
+	}
 	if j.Request.NoCaptions {
 		args = append(args, "--no-captions")
 	}
@@ -525,14 +585,14 @@ func (s *Service) execute(ctx context.Context, j *Job) error {
 	if len(j.Clips) == 0 {
 		return fmt.Errorf("processor returned no clips")
 	}
-	// Successful jobs no longer need the downloaded original or scratch media.
-	// Keep captions/transcript for inspection; never remove library uploads.
-	if env("SHORTS_KEEP_SOURCE", "false") != "true" && j.Request.URL != "" {
-		matches, _ := filepath.Glob(filepath.Join(work, "source.*"))
+	// Retain originals for editing unless the operator explicitly favors disk space.
+	// Never remove library uploads.
+	if env("SHORTS_KEEP_SOURCE", "true") != "true" && j.Request.URL != "" {
+		matches, _ := filepath.Glob(filepath.Join(cache, "source.*"))
 		for _, path := range matches {
 			_ = os.Remove(path)
 		}
-		_ = os.Remove(filepath.Join(work, "download.json"))
+		_ = os.Remove(filepath.Join(cache, "download.json"))
 	}
 	return nil
 }

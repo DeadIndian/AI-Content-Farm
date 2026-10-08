@@ -38,6 +38,10 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('/');
     await expect(page.locator('#create-heading')).toBeVisible();
+    expect(await page.evaluate(() => {
+      const ids = [...document.querySelectorAll('[id]')].map(el => el.id);
+      return ids.filter((id, index) => ids.indexOf(id) !== index);
+    })).toEqual([]);
     await expect(page.locator('#connection-label')).not.toHaveText('Connecting');
     for (const view of ['shorts', 'projects', 'cast', 'settings', 'create']) {
       await page.locator(`nav [data-view="${view}"], .sidebar-bottom [data-view="${view}"]`).first().click();
@@ -123,6 +127,75 @@ test('backend planning errors are visible and retryable', async ({ page }) => {
   await page.locator('#generate-draft').click();
   await expect(page.locator('#draft-status')).toContainText('temporarily unavailable');
   await expect(page.locator('#generate-draft')).toBeEnabled();
+});
+
+test('Shorts presets and custom lengths submit full-video Reel options', async ({ page }) => {
+  const requests = [];
+  await mockCapabilities(page);
+  await page.route('**/api/shorts', route => {
+    if (route.request().method() === 'GET') return route.fulfill({json: []});
+    requests.push(route.request().postDataJSON());
+    return route.fulfill({status: 202, json: {id: 'new-batch', status: 'queued', request: requests.at(-1)}});
+  });
+  await page.goto('/#shorts');
+  await page.locator('#shorts-url').fill('https://youtu.be/podcast');
+  for (const duration of ['30', '40', '45', 'custom']) {
+    await page.locator('#shorts-duration').selectOption(duration);
+    if (duration === 'custom') await page.locator('#shorts-custom-duration').fill('35');
+    await page.locator('#shorts-submit').click();
+    await expect(page.locator('#shorts-status')).toContainText('Your batch is queued');
+    expect(requests.at(-1)).toMatchObject({max_duration: duration === 'custom' ? 35 : Number(duration), cut_mode: 'fixed', edit_style: 'reel', no_captions: false});
+    expect(requests.at(-1).clip_start).toBeUndefined();
+  }
+});
+
+test('Shorts batch and individual edits preserve input on error and keep originals', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.setViewportSize({width: 390, height: 844});
+  await mockCapabilities(page);
+  const job = {id: 'original', status: 'completed', source_duration: 7200, total: 1, completed: 1,
+    request: {url: 'https://youtu.be/podcast', max_duration: 45, layout: 'fit', edit_style: 'clean', cut_mode: 'sentence'},
+    clips: [{filename: 'part.mp4', title: 'Part 1', start: 60, end: 90, duration: 30.04}]};
+  await page.route('**/api/shorts', route => route.fulfill({json: [job]}));
+  let attempts = 0;
+  const requests = [];
+  await page.route('**/api/shorts/original/regenerate', route => {
+    requests.push(route.request().postDataJSON());
+    if (++attempts === 1) return route.fulfill({status: 400, json: {error: 'Please retry this edit.'}});
+    return route.fulfill({status: 202, json: {...job, id: `edit-${attempts}`, status: 'queued', clips: [], request: requests.at(-1)}});
+  });
+  await page.goto('/#shorts');
+  const card = page.locator('#shorts-jobs .job-card').first();
+  await card.getByRole('button', {name: 'Edit batch', exact: true}).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(page.locator('#shorts-edit-duration')).toBeFocused();
+  await page.locator('#shorts-edit-duration').fill('40');
+  await page.locator('#shorts-edit-style').selectOption('reel');
+  await page.locator('#shorts-edit-submit').click();
+  await expect(page.locator('#shorts-edit-status')).toContainText('Please retry');
+  await expect(page.locator('#shorts-edit-duration')).toHaveValue('40');
+  await page.locator('#shorts-edit-submit').click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  expect(requests.at(-1)).toMatchObject({max_duration: 40, edit_style: 'reel'});
+  expect(requests.at(-1).clip_start).toBeUndefined();
+  await expect(card.getByRole('button', {name: 'Edit batch', exact: true})).toBeFocused();
+  await card.getByRole('button', {name: 'Edit this Short'}).click();
+  await expect(page.locator('#shorts-edit-start')).toHaveJSProperty('valueAsNumber', 60);
+  await expect(page.locator('#shorts-edit-duration')).toHaveJSProperty('valueAsNumber', 30.08);
+  await page.locator('#shorts-edit-start').fill('75');
+  await page.locator('#shorts-edit-duration').fill('30');
+  await expect(page.locator('#shorts-edit-summary')).toContainText('75.00s');
+  expect(await page.locator('#shorts-editor').evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBeTruthy();
+  await page.locator('#shorts-edit-submit').click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  expect(requests.at(-1)).toMatchObject({clip_start: 75, max_duration: 30});
+  await expect(card.locator('.clip-card')).toHaveCount(1);
+  await card.getByRole('button', {name: 'Edit this Short'}).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  await expect(card.getByRole('button', {name: 'Edit this Short'})).toBeFocused();
+  expect(errors).toEqual([]);
 });
 
 test('render a playable presenter video (opt-in media)', async ({ page, request }) => {

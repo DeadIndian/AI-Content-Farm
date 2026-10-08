@@ -374,7 +374,7 @@
         let result;
         if (kind === 'cancel') result = await post(type === 'studio' ? `/api/studio/jobs/${id}/cancel` : `/api/shorts/${id}/cancel`);
         else if (type === 'studio') result = await post(`/api/studio/jobs/${id}/retry`);
-        else result = await post('/api/shorts', card.job.request);
+        else result = await post(`/api/shorts/${id}/regenerate`, card.job.request);
         if (kind === 'retry' && type === 'studio' && result?.id) { state.latestId = result.id; save(); }
         await refreshJobs(); toast(kind === 'cancel' ? 'Cancellation requested.' : 'A new attempt is queued.');
       } catch (err) { toast(err.message, true); }
@@ -399,7 +399,12 @@
       actions.append(card.edit);
       card.video = element('video', 'job-player', null, root); card.video.controls = true; card.video.preload = 'metadata'; card.video.playsInline = true; card.video.hidden = true;
       card.video.addEventListener('error', () => { if (card.video.getAttribute('src')) { card.error.textContent = 'This video could not be loaded. Try the download link, or retry the render if the output file is missing.'; card.error.hidden = false; } });
-    } else card.clips = element('div', 'clip-grid', null, root);
+    } else {
+      card.edit = makeButton('Edit batch', 'secondary small', 'create', () => openShortsEditor(card.job));
+      actions.append(card.edit);
+      card.summary = element('p', 'shorts-batch-summary', null, root);
+      card.clips = element('div', 'clip-grid', null, root);
+    }
     card.details = element('details', 'job-trace', null, root);
     element('summary', '', 'Production details', card.details);
     card.trace = element('ol', 'trace-list', null, card.details);
@@ -431,10 +436,15 @@
       }
     } else {
       const clips = job.clips || [];
+      card.edit.disabled = ACTIVE.has(job.status);
+      card.summary.textContent = `${job.completed || clips.length} / ${job.total || '…'} clips · ${job.request?.max_duration || 45}s max · ${job.request?.edit_style === 'reel' ? 'Reel' : 'Clean'}${job.request?.clip_start != null ? ' · Individual edit' : ' · Full source'}`;
       setLink(card.download, clips.length ? `/api/shorts/${encodeURIComponent(job.id)}/download` : '', `shorts-${job.id}.zip`);
       for (const clip of clips) {
         const key = clip.filename || clip.url;
-        if (card.clipMap.has(key)) continue;
+        if (card.clipMap.has(key)) {
+          card.clipMap.get(key).querySelector('button').disabled = ACTIVE.has(job.status);
+          continue;
+        }
         const tile = element('article', 'clip-card', null, card.clips);
         const video = element('video', '', null, tile); video.controls = true; video.preload = 'none'; video.playsInline = true;
         const url = safeURL(clip.url, true); if (url) video.src = url;
@@ -442,6 +452,8 @@
         element('p', '', clip.title || clip.filename || 'Short clip', tile);
         element('small', '', Number.isFinite(Number(clip.duration)) ? `${Number(clip.duration).toFixed(1)} SEC · 9:16` : '9:16', tile);
         const link = element('a', '', 'Download MP4', tile); setLink(link, clip.url, clip.filename || 'short.mp4');
+        const edit = makeButton('Edit this Short', 'secondary small', 'create', () => openShortsEditor(card.job, clip));
+        edit.disabled = ACTIVE.has(job.status); tile.append(edit);
         card.clipMap.set(key, tile);
       }
     }
@@ -555,6 +567,12 @@
   $('upload-zone').addEventListener('dragover', event => { event.preventDefault(); $('upload-zone').classList.add('dragging'); });
   $('upload-zone').addEventListener('dragleave', () => $('upload-zone').classList.remove('dragging'));
   $('upload-zone').addEventListener('drop', event => { event.preventDefault(); $('upload-zone').classList.remove('dragging'); uploadVideo(event.dataTransfer.files[0]); });
+  $('shorts-duration').addEventListener('change', () => {
+    const custom = $('shorts-duration').value === 'custom';
+    $('shorts-custom-field').hidden = !custom;
+    $('shorts-custom-duration').disabled = !custom;
+    if (custom) $('shorts-custom-duration').focus();
+  });
   $('shorts-form').addEventListener('submit', async event => {
     event.preventDefault();
     if (state.uploading) return;
@@ -562,7 +580,8 @@
     const source = mode === 'library' ? $('shorts-source').value : mode === 'upload' ? state.uploadedSource : '';
     const url = mode === 'url' ? $('shorts-url').value.trim() : '';
     if (!source && !url) { status('shorts-status', mode === 'upload' ? 'Upload a video first, then make your cuts.' : 'Choose a source video or paste a YouTube link.', 'error'); return; }
-    const request = {source, url, layout: chosen('shorts-layout'), language: $('shorts-language').value, max_duration: Number($('shorts-duration').value), no_captions: !$('shorts-captions').checked};
+    const duration = $('shorts-duration').value === 'custom' ? $('shorts-custom-duration').value : $('shorts-duration').value;
+    const request = {source, url, layout: chosen('shorts-layout'), language: $('shorts-language').value, max_duration: Number(duration), no_captions: !$('shorts-captions').checked, cut_mode: $('shorts-cut-mode').value, edit_style: $('shorts-style').value};
     busy($('shorts-submit'), true, 'Queuing your footage…');
     status('shorts-status', 'Sending your video to the cutting room…', 'loading');
     try {
@@ -573,6 +592,75 @@
       $('shorts-jobs').scrollIntoView({behavior: 'smooth', block: 'start'});
     } catch (error) { status('shorts-status', error.message, 'error'); }
     finally { busy($('shorts-submit'), false); }
+  });
+
+  let shortsEdit = null;
+  function openShortsEditor(job, clip = null) {
+    shortsEdit = {job, clip, trigger: document.activeElement};
+    const request = job.request || {};
+    $('shorts-editor-title').textContent = clip ? 'Edit this Short' : 'Edit batch';
+    $('shorts-editor-help').textContent = clip
+      ? 'Preview shows the original export. Set a start time in the full source and render a new version. The original stays available.'
+      : 'Split the entire original source again with new settings. Your existing exports stay available.';
+    $('shorts-edit-start-field').hidden = !clip; $('shorts-edit-start').disabled = !clip;
+    $('shorts-edit-start').value = clip ? Number(clip.start).toFixed(2) : '0';
+    if (job.source_duration > 0) $('shorts-edit-start').max = String(Math.max(0, job.source_duration - 0.01));
+    else $('shorts-edit-start').removeAttribute('max');
+    // Preserve a natural cut's existing interval when only its style is changed.
+    $('shorts-edit-duration').value = clip
+      ? Math.min(45, Math.max(5, clip.end - clip.start + .08)).toFixed(2)
+      : String(request.max_duration || 45);
+    $('shorts-edit-cut-field').hidden = !!clip;
+    $('shorts-edit-cut-mode').value = request.cut_mode || 'sentence';
+    $('shorts-edit-layout').value = request.layout || 'fit';
+    $('shorts-edit-style').value = request.edit_style || 'clean';
+    $('shorts-edit-captions').checked = !request.no_captions;
+    const preview = $('shorts-edit-preview'), url = safeURL(clip?.url, true);
+    preview.hidden = !url;
+    if (url) preview.src = url; else preview.removeAttribute('src');
+    status('shorts-edit-status'); updateShortsEditSummary();
+    $('shorts-editor').showModal(); $('shorts-edit-duration').focus();
+  }
+  function updateShortsEditSummary() {
+    if (!shortsEdit) return;
+    const maximum = Number($('shorts-edit-duration').value);
+    const duration = Number(shortsEdit.job.source_duration);
+    if (!Number.isFinite(maximum) || maximum < 5 || maximum > 45) {
+      $('shorts-edit-summary').textContent = 'Choose a maximum length between 5 and 45 seconds.'; return;
+    }
+    if (shortsEdit.clip) {
+      const start = Number($('shorts-edit-start').value);
+      const end = Math.min(duration || Infinity, start + maximum - .08);
+      $('shorts-edit-summary').textContent = `Source interval: ${start.toFixed(2)}s → ${end.toFixed(2)}s. The final part stops at the source ending.`;
+    } else {
+      const estimate = duration > 0 ? `About ${Math.ceil(duration / (maximum - .08))} clips${$('shorts-edit-cut-mode').value === 'sentence' ? ' or more with natural cuts' : ''}. ` : '';
+      $('shorts-edit-summary').textContent = `${estimate}Full source, in order, including the shorter ending. A tiny encoding margin keeps exports within your limit.`;
+    }
+  }
+  $('shorts-edit-form').addEventListener('input', updateShortsEditSummary);
+  $('shorts-editor-close').addEventListener('click', () => $('shorts-editor').close());
+  $('shorts-editor').addEventListener('cancel', event => { if ($('shorts-edit-submit').disabled) event.preventDefault(); });
+  $('shorts-editor').addEventListener('close', () => {
+    const preview = $('shorts-edit-preview'); preview.pause(); preview.removeAttribute('src'); preview.load();
+    shortsEdit?.trigger?.focus(); shortsEdit = null;
+  });
+  $('shorts-edit-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!shortsEdit || $('shorts-edit-submit').disabled) return;
+    const {job, clip} = shortsEdit;
+    const request = {max_duration: Number($('shorts-edit-duration').value), layout: $('shorts-edit-layout').value,
+      cut_mode: $('shorts-edit-cut-mode').value, edit_style: $('shorts-edit-style').value,
+      language: job.request?.language || '', no_captions: !$('shorts-edit-captions').checked};
+    if (clip) request.clip_start = Number($('shorts-edit-start').value);
+    busy($('shorts-edit-submit'), true, 'Queuing new version…'); $('shorts-editor-close').disabled = true;
+    status('shorts-edit-status', 'Queuing your edit…', 'loading');
+    try {
+      const result = await post(`/api/shorts/${encodeURIComponent(job.id)}/regenerate`, request);
+      if (result?.id) state.shortsJobs = [result, ...state.shortsJobs.filter(item => item.id !== result.id)];
+      updateJobs(); await refreshJobs();
+      $('shorts-editor').close(); toast('New version queued. Your original exports are still available.');
+    } catch (error) { status('shorts-edit-status', error.message, 'error'); }
+    finally { busy($('shorts-edit-submit'), false); $('shorts-editor-close').disabled = false; }
   });
 
   function renderCast() {

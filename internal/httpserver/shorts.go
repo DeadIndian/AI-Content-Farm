@@ -2,7 +2,9 @@ package httpserver
 
 import (
 	"archive/zip"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -46,6 +48,23 @@ func (s *Server) RegisterShorts(service *shorts.Service) {
 			return
 		}
 		writeJSON(w, 200, jobs)
+	})
+	s.mux.HandleFunc("POST /api/shorts/{id}/regenerate", func(w http.ResponseWriter, r *http.Request) {
+		var req shorts.Request
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 65536)).Decode(&req); err != nil {
+			writeJSON(w, 400, map[string]string{"error": "invalid JSON payload"})
+			return
+		}
+		job, err := service.Regenerate(r.PathValue("id"), req)
+		if err != nil {
+			code := http.StatusBadRequest
+			if errors.Is(err, sql.ErrNoRows) {
+				code = http.StatusNotFound
+			}
+			writeJSON(w, code, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusAccepted, job)
 	})
 	s.mux.HandleFunc("GET /api/shorts/{id}", func(w http.ResponseWriter, r *http.Request) {
 		setNoCacheHeaders(w)

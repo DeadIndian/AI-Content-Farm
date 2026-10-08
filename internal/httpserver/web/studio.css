@@ -92,3 +92,20 @@
 @media(max-width:520px){.render-actions>.render-options{grid-template-columns:1fr;gap:16px}.resource-note{font-size:9px}.resource-banner{font-size:10px;align-items:flex-start;padding:13px 14px}.resource-banner .status-dot{margin-top:4px}.cast-import{padding:22px 17px}.cast-import .section-heading h2{font-size:24px}.cast-upload-grid{grid-template-columns:1fr;gap:24px}.cast-upload-person .form-two{grid-template-columns:.9fr 1.1fr;gap:10px}.cast-upload-portrait{height:136px}.cast-import>.section-heading>svg{display:none}.cast-upload-person input[type=file]{font-size:10px}.extra-poses summary{font-size:10px}.cast-import-actions{gap:16px}}
 
 .source-notes-toggle{margin-top:13px;color:var(--olive);font-size:10px;gap:7px;width:100%;justify-content:flex-start}.source-notes-toggle>small{font:6px var(--mono);letter-spacing:.6px;color:var(--soft);margin-left:auto}.source-notes-toggle>svg{width:13px;height:13px}
+
+/* Re-edit exports without replacing the original batch. */
+.shorts-batch-summary{color:var(--muted);font:11px/1.7 var(--mono);margin:16px 0}
+.clip-card .button{display:flex;margin-top:12px;min-height:44px;width:100%}
+.shorts-editor{color:var(--text);background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);width:min(580px,calc(100% - 24px));max-height:calc(100dvh - 32px);padding:24px;overflow:auto}
+.shorts-editor::backdrop{background:#080b08cc}
+.shorts-editor .section-heading{margin-bottom:12px;align-items:start}
+.shorts-editor .section-heading h2{font-size:26px}
+.shorts-editor .field-help{font-size:12px;color:var(--muted);line-height:1.6}
+.shorts-editor form{margin-top:20px}
+.shorts-editor .field>label{font-size:12px}
+.shorts-editor input,.shorts-editor select,.shorts-editor .button{min-height:44px}
+.shorts-editor .form-two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.shorts-editor video{display:block;max-height:220px;max-width:100%;margin:16px auto;background:#000;border-radius:8px}
+.shorts-editor .toggle-row small{font-size:11px;color:var(--muted)}
+#shorts-edit-summary{margin-bottom:16px}
+@media(max-width:520px){.shorts-editor{padding:20px 16px}.shorts-editor .form-two{grid-template-columns:1fr;gap:0}.shorts-editor .section-heading h2{font-size:23px}}
