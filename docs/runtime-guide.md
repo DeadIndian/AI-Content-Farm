@@ -96,8 +96,12 @@ their resource limits. These checks are not a hardware temperature guarantee.
 
 Downloads prefer sources up to 1080p/30 fps, use one fragment at a time, and are
 limited to 5 MiB/s by default. At least 5 GiB free disk is required for Shorts.
-Completed YouTube jobs remove downloaded originals unless
-`SHORTS_KEEP_SOURCE=true`; uploaded library videos and finished outputs remain.
+Completed YouTube jobs retain downloaded originals by default so later edits can
+reuse the source and transcript. Set `SHORTS_KEEP_SOURCE=false` to remove the
+downloaded source after completion; later edits then need to download it again
+and may need fresh transcription. Uploaded library videos and finished outputs
+remain. Retained source files live in `data/shorts/<source-job-id>/source.*`;
+remove them only when no jobs are using them and you no longer need fast edits.
 
 ## Presenter casts
 
@@ -126,12 +130,42 @@ in the public repository. See [cast setup](../assets/presenters/README.md).
 
 ## Long video to Shorts
 
-Open **Make Shorts**, upload a source or paste a YouTube video URL, select
-fit/crop/split layout and caption preference, then start the job. Gemini
-transcribes source chunks; the worker chooses sentence/pause boundaries and
-covers the source sequentially. Output is 1080 × 1920 H.264/AAC with the original
-audio, downloadable individually or in a ZIP. This workflow does not rank viral
-moments or track active speakers. Review cloud-estimated caption timing.
+1. Open **Make Shorts**, upload a source or paste a YouTube video URL.
+2. Choose a layout and a maximum length: **15, 30, 40, or 45 seconds**, or
+   **Custom length** for any value from 5–45 seconds.
+3. **Fixed length** covers the entire video sequentially. **Natural cuts** uses
+   sentence/pause endings when a transcript is available. Neither limits the
+   number of clips, and both retain the final shorter part.
+4. Choose **Reel** for subtle moving zoom, enhanced contrast/color, a vignette,
+   normalized speech volume, and animated word-highlighted captions. **Clean**
+   retains simple cuts and standard highlighted captions. Captions have their
+   own toggle and require Gemini for new transcripts.
+5. Select **Make the cuts**. Clips appear as they finish; download individual
+   MP4s or the batch ZIP. A ZIP downloaded during rendering contains only the
+   completed clips at that moment.
+
+Exports are 1080 × 1920 H.264/AAC. The worker reserves 80 ms per cut for video
+frames/audio packets to keep encoded durations below the selected maximum. For
+an exactly two-hour source, fixed cuts produce approximately **241 clips at
+30 seconds, 181 at 40 seconds, or 161 at 45 seconds**, including the shorter
+ending. Natural cuts can produce more. Full coverage includes silent sections;
+this workflow does not rank viral moments or track active speakers. Review
+cloud-estimated caption timing before uploading.
+
+### Change an export afterwards
+
+Use **Edit batch** on a finished batch to split the entire source again at a new
+duration or change layout, edit style, and captions. Use **Edit this Short** to
+set a new start time (seconds from the beginning of the full original source)
+and length for one clip. Individual edits ignore sentence boundaries, use the
+chosen start, and stop at source end if fewer seconds remain. The editor's video
+is the original export; changes become visible in the newly rendered version.
+
+**Render new version** queues a new job and preserves all previous exports.
+Source media and transcripts are shared between versions; the output files are
+independent. Wait for an active batch to finish or cancel it before editing.
+Long sources take time to transcribe and render, even when no local AI model is
+loaded. Each retained version and original consumes disk space.
 
 Intel VAAPI encoding is used when available, with a single-thread CPU fallback.
 One heavy job runs at a time. Transcription and clip checkpoints persist across
@@ -140,7 +174,7 @@ retries. Presenter jobs restart their render from the beginning after recovery.
 ```bash
 curl -X POST http://localhost:8080/api/shorts \
   -H 'Content-Type: application/json' \
-  -d '{"url":"https://www.youtube.com/watch?v=VIDEO_ID","layout":"fit"}'
+  -d '{"url":"https://www.youtube.com/watch?v=VIDEO_ID","layout":"fit","max_duration":40,"cut_mode":"fixed","edit_style":"reel"}'
 ```
 
 `GET /api/shorts/{id}` reports progress; `POST /api/shorts/{id}/cancel` cancels;
@@ -149,6 +183,24 @@ curl -X POST http://localhost:8080/api/shorts \
 transcription. If YouTube requires sign-in, upload the downloaded source or
 configure `YOUTUBE_COOKIES_FILE`; native users can also set
 `YOUTUBE_COOKIES_BROWSER=firefox`. Credentials and cookies stay outside Git.
+
+To regenerate, send a complete set of rendering options to the original job:
+
+```bash
+curl -X POST http://localhost:8080/api/shorts/JOB_ID/regenerate \
+  -H 'Content-Type: application/json' \
+  -d '{"max_duration":30,"layout":"fit","cut_mode":"fixed","edit_style":"reel","no_captions":false}'
+```
+
+Add `"clip_start":120` to render only one Short starting two minutes into the
+source. Omit `clip_start` to re-split the full source, even when editing a job
+that produced one clip. Source identity is inherited from the referenced job;
+any submitted `url`/`source` fields are ignored. Responses use the existing Job
+shape with optional `source_job_id` (the original cache owner). Every successful
+submission returns **202** with a new ID; repeating it creates another version.
+Missing jobs return **404**, invalid options/active parents **400** with an
+`error` string. Old API clients default to `cut_mode:sentence`,
+`edit_style:clean`, and a 45-second maximum. The browser defaults to fixed/Reel.
 
 ## Optional local model integrations
 

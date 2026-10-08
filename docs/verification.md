@@ -1,5 +1,37 @@
 # Verification record
 
+## Editable Shorts — 2026-10-08
+
+This pass used Linux, Go 1.25.0, Python 3.13.5, FFmpeg 7.1.5, and isolated
+Playwright Chromium against the local Go server.
+
+- Go race tests and `go vet -p=1 ./...` passed. New checks cover render-option
+  validation, batch/single regeneration, source inheritance, cache lineage,
+  preservation of original jobs, and the actual regeneration HTTP route.
+- Python: **43 passed, 5 opt-in media tests skipped**. New checks cover full
+  two-hour timeline coverage at 30/40/45 seconds, fixed vs sentence cuts,
+  individual source offsets, shorter endings, sub-millisecond rounding residue,
+  and escaped animated captions.
+- Browser: **8 non-media journeys passed** (the corrected edit journey was
+  rerun separately); 2 existing media journeys remained opt-in. New journeys
+  exercise presets/custom durations, batch/individual edits, validation errors,
+  retry, original export retention, and keyboard focus/Escape behavior. These
+  new browser journeys mock job responses; Go tests cover the real HTTP route.
+- Screenshots and overflow checks passed at 320, 768, 1024, and 1440 pixels.
+  The mobile editor and Make Shorts page were visually inspected.
+- `node --check internal/httpserver/web/studio.js`, the Go build, and
+  `git diff --check` passed. No new application dependencies were added.
+
+**Pending media verification:** the real Reel-render test reached the production
+cooling guard at 103°C and timed out waiting for cooling. Follow-up readings were
+100–104°C. The guard remains enabled. New FFmpeg effects, encoded clip durations,
+and the complete media/download journey therefore still need verification on a
+cool machine. Run `STUDIO_RUN_MEDIA_TESTS=1 .venv/bin/python scripts/test_shorts.py`
+to check H.264/AAC, all three Reel layouts, and visibly burned captions. No live
+YouTube or Gemini request was exercised in this pass; no Gemini key was supplied.
+
+## Earlier verification
+
 Recorded on 2026-10-07. The test machine uses Linux, Go 1.25.5 and Python 3.13.5. The configured application uses Gemini for planning, speech and transcription, with local models disabled and gentle rendering selected.
 
 ## Current local checks
